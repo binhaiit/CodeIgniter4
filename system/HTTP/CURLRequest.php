@@ -57,7 +57,7 @@ class CURLRequest extends Request
 	/**
 	 * The response object associated with this request
 	 *
-	 * @var \CodeIgniter\HTTP\Response
+	 * @var ResponseInterface|null
 	 */
 	protected $response;
 
@@ -130,7 +130,7 @@ class CURLRequest extends Request
 		parent::__construct($config);
 
 		$this->response = $response;
-		$this->baseURI  = $uri;
+		$this->baseURI  = $uri->useRawQueryString();
 
 		$this->parseOptions($options);
 	}
@@ -141,7 +141,7 @@ class CURLRequest extends Request
 	 * Sends an HTTP request to the specified $url. If this is a relative
 	 * URL, it will be merged with $this->baseURI to form a complete URL.
 	 *
-	 * @param $method
+	 * @param string $method
 	 * @param string $url
 	 * @param array  $options
 	 *
@@ -443,18 +443,27 @@ class CURLRequest extends Request
 		// Do we need to delay this request?
 		if ($this->delay > 0)
 		{
-			sleep($this->delay);
+			sleep($this->delay); // @phpstan-ignore-line
 		}
 
 		$output = $this->sendRequest($curl_options);
 
+		// Set the string we want to break our response from
+		$breakString = "\r\n\r\n";
+
 		if (strpos($output, 'HTTP/1.1 100 Continue') === 0)
 		{
-			$output = substr($output, strpos($output, "\r\n\r\n") + 4);
+			$output = substr($output, strpos($output, $breakString) + 4);
+		}
+
+		 // If request and response have Digest
+		if (isset($this->config['auth'][2]) && $this->config['auth'][2] === 'digest' && strpos($output, 'WWW-Authenticate: Digest') !== false)
+		{
+				$output = substr($output, strpos($output, $breakString) + 4);
 		}
 
 		// Split out our headers and body
-		$break = strpos($output, "\r\n\r\n");
+		$break = strpos($output, $breakString);
 
 		if ($break !== false)
 		{
@@ -534,7 +543,7 @@ class CURLRequest extends Request
 		$size = strlen($this->body);
 
 		// Have content?
-		if ($size === null || $size > 0)
+		if ($size > 0)
 		{
 			return $this->applyBody($curl_options);
 		}
@@ -595,7 +604,7 @@ class CURLRequest extends Request
 			}
 			else if (strpos($header, 'HTTP') === 0)
 			{
-				preg_match('#^HTTP\/([12]\.[01]) ([0-9]+) (.+)#', $header, $matches);
+				preg_match('#^HTTP\/([12](?:\.[01])?) ([0-9]+) (.+)#', $header, $matches);
 
 				if (isset($matches[1]))
 				{
@@ -818,7 +827,7 @@ class CURLRequest extends Request
 
 		if ($output === false)
 		{
-			throw HTTPException::forCurlError(curl_errno($ch), curl_error($ch));
+			throw HTTPException::forCurlError((string) curl_errno($ch), curl_error($ch));
 		}
 
 		curl_close($ch);

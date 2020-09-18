@@ -222,7 +222,7 @@ class Connection extends BaseConnection implements ConnectionInterface
 			$msg = str_replace($this->username, '****', $msg);
 			$msg = str_replace($this->password, '****', $msg);
 
-			throw new \mysqli_sql_exception($msg, $e->getCode(), $e);
+			throw new DatabaseException($msg, $e->getCode(), $e);
 		}
 
 		return false;
@@ -386,11 +386,6 @@ class Connection extends BaseConnection implements ConnectionInterface
 	 */
 	protected function _escapeString(string $str): string
 	{
-		if (is_bool($str))
-		{
-			return $str;
-		}
-
 		if (! $this->connID)
 		{
 			$this->initialize();

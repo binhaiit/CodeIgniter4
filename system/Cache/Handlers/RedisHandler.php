@@ -99,7 +99,7 @@ class RedisHandler implements CacheInterface
 	 */
 	public function __destruct()
 	{
-		if ($this->redis)
+		if ($this->redis) // @phpstan-ignore-line
 		{
 			$this->redis->close();
 		}
@@ -223,7 +223,8 @@ class RedisHandler implements CacheInterface
 		{
 			return false;
 		}
-		elseif ($ttl)
+
+		if ($ttl)
 		{
 			$this->redis->expireAt($key, time() + $ttl);
 		}

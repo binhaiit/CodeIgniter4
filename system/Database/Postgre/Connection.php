@@ -53,7 +53,7 @@ class Connection extends BaseConnection implements ConnectionInterface
 	 *
 	 * @var string
 	 */
-	public $DBDriver = 'postgre';
+	public $DBDriver = 'Postgre';
 
 	//--------------------------------------------------------------------
 
@@ -172,6 +172,7 @@ class Connection extends BaseConnection implements ConnectionInterface
 			return $this->dataCache['version'];
 		}
 
+		// @phpstan-ignore-next-line
 		if (! $this->connID || ( $pgVersion = pg_version($this->connID)) === false)
 		{
 			$this->initialize();
@@ -239,7 +240,8 @@ class Connection extends BaseConnection implements ConnectionInterface
 		{
 			return pg_escape_literal($this->connID, $str);
 		}
-		elseif (is_bool($str))
+
+		if (is_bool($str))
 		{
 			return $str ? 'TRUE' : 'FALSE';
 		}
@@ -479,9 +481,9 @@ class Connection extends BaseConnection implements ConnectionInterface
 	/**
 	 * Insert ID
 	 *
-	 * @return integer
+	 * @return integer|string
 	 */
-	public function insertID(): int
+	public function insertID()
 	{
 		$v = pg_version($this->connID);
 		// 'server' key is only available since PostgreSQL 7.4
@@ -530,7 +532,7 @@ class Connection extends BaseConnection implements ConnectionInterface
 	 */
 	protected function buildDSN()
 	{
-		$this->DSN === '' || $this->DSN = '';
+		$this->DSN === '' || $this->DSN = ''; // @phpstan-ignore-line
 
 		// If UNIX sockets are used, we shouldn't set a port
 		if (strpos($this->hostname, '/') !== false)
@@ -561,7 +563,7 @@ class Connection extends BaseConnection implements ConnectionInterface
 		// array, but they might be set by parse_url() if the configuration was
 		// provided via string> Example:
 		//
-		// postgre://username:password@localhost:5432/database?connect_timeout=5&sslmode=1
+		// Postgre://username:password@localhost:5432/database?connect_timeout=5&sslmode=1
 		foreach (['connect_timeout', 'options', 'sslmode', 'service'] as $key)
 		{
 			if (isset($this->{$key}) && is_string($this->{$key}) && $this->{$key} !== '')

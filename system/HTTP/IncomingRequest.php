@@ -93,14 +93,14 @@ class IncomingRequest extends Request
 	/**
 	 * File collection
 	 *
-	 * @var Files\FileCollection
+	 * @var Files\FileCollection|null
 	 */
 	protected $files;
 
 	/**
 	 * Negotiator
 	 *
-	 * @var \CodeIgniter\HTTP\Negotiate
+	 * @var \CodeIgniter\HTTP\Negotiate|null
 	 */
 	protected $negotiator;
 
@@ -194,7 +194,7 @@ class IncomingRequest extends Request
 	 * Handles setting up the locale, perhaps auto-detecting through
 	 * content negotiation.
 	 *
-	 * @param $config
+	 * @param \Config\App $config
 	 */
 	public function detectLocale($config)
 	{
@@ -246,29 +246,13 @@ class IncomingRequest extends Request
 	{
 		// If it's not a valid locale, set it
 		// to the default locale for the site.
-		if (! in_array($locale, $this->validLocales))
+		if (! in_array($locale, $this->validLocales, true))
 		{
 			$locale = $this->defaultLocale;
 		}
 
 		$this->locale = $locale;
-
-		// If the intl extension is loaded, make sure
-		// that we set the locale for it... if not, though,
-		// don't worry about it.
-		// this should not block code coverage thru unit testing
-		// @codeCoverageIgnoreStart
-		try
-		{
-			if (class_exists('\Locale', false))
-			{
-				\Locale::setDefault($locale);
-			}
-		}
-		catch (\Exception $e)
-		{
-		}
-		// @codeCoverageIgnoreEnd
+		\Locale::setDefault($locale);
 
 		return $this;
 	}
@@ -311,11 +295,13 @@ class IncomingRequest extends Request
 		{
 			return true;
 		}
-		elseif ($this->hasHeader('X-Forwarded-Proto') && $this->getHeader('X-Forwarded-Proto')->getValue() === 'https')
+
+		if ($this->hasHeader('X-Forwarded-Proto') && $this->getHeader('X-Forwarded-Proto')->getValue() === 'https')
 		{
 			return true;
 		}
-		elseif ($this->hasHeader('Front-End-Https') && ! empty($this->getHeader('Front-End-Https')->getValue()) && strtolower($this->getHeader('Front-End-Https')->getValue()) !== 'off')
+
+		if ($this->hasHeader('Front-End-Https') && ! empty($this->getHeader('Front-End-Https')->getValue()) && strtolower($this->getHeader('Front-End-Https')->getValue()) !== 'off')
 		{
 			return true;
 		}
@@ -779,7 +765,8 @@ class IncomingRequest extends Request
 		{
 			return '';
 		}
-		elseif (strncmp($uri, '/', 1) === 0)
+
+		if (strncmp($uri, '/', 1) === 0)
 		{
 			$uri                     = explode('?', $uri, 2);
 			$_SERVER['QUERY_STRING'] = $uri[1] ?? '';

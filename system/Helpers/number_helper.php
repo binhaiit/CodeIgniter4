@@ -1,4 +1,5 @@
 <?php
+
 /**
  * CodeIgniter
  *
@@ -59,7 +60,7 @@ if (! function_exists('number_to_size'))
 		// Strip any formatting & ensure numeric input
 		try
 		{
-			$num = 0 + str_replace(',', '', $num);
+			$num = 0 + str_replace(',', '', $num); // @phpstan-ignore-line
 		}
 		catch (\ErrorException $ee)
 		{
@@ -128,7 +129,7 @@ if (! function_exists('number_to_amount'))
 		// Strip any formatting & ensure numeric input
 		try
 		{
-			$num = 0 + str_replace(',', '', $num);
+			$num = 0 + str_replace(',', '', $num); // @phpstan-ignore-line
 		}
 		catch (\ErrorException $ee)
 		{
@@ -214,7 +215,7 @@ if (! function_exists('format_number'))
 	function format_number(float $num, int $precision = 1, string $locale = null, array $options = []): string
 	{
 		// Locale is either passed in here, negotiated with client, or grabbed from our config file.
-		$locale = $locale ?? \CodeIgniter\Config\Services::request()->getLocale();
+		$locale = $locale ?? \Config\Services::request()->getLocale();
 
 		// Type can be any of the NumberFormatter options, but provide a default.
 		$type = (int) ($options['type'] ?? NumberFormatter::DECIMAL);
@@ -322,12 +323,12 @@ if (! function_exists('number_to_roman'))
 					$return = $key2 . str_repeat($key1, $n - 5);
 					break;
 				case 9:
-					$return = $key1 . $key_f;
+					$return = $key1 . $key_f; // @phpstan-ignore-line
 					break;
 			}
 			switch ($num) {
 				case 10:
-					$return = $key_f;
+					$return = $key_f; // @phpstan-ignore-line
 					break;
 			}
 			if ($num > 10)

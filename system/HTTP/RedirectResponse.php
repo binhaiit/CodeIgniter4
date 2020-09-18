@@ -63,8 +63,7 @@ class RedirectResponse extends Response
 		// for better security.
 		if (strpos($uri, 'http') !== 0)
 		{
-			$url = current_url(true)->resolveRelativeURI($uri);
-			$uri = (string)$url;
+			$uri = (string) current_url(true)->resolveRelativeURI($uri);
 		}
 
 		return $this->redirect($uri, $method, $code);
@@ -74,18 +73,18 @@ class RedirectResponse extends Response
 	 * Sets the URI to redirect to but as a reverse-routed or named route
 	 * instead of a raw URI.
 	 *
-	 * @param string       $route
-	 * @param array        $params
-	 * @param integer|null $code
-	 * @param string       $method
+	 * @param string  $route
+	 * @param array   $params
+	 * @param integer $code
+	 * @param string  $method
+	 *
+	 * @throws \CodeIgniter\HTTP\Exceptions\HTTPException
 	 *
 	 * @return $this
 	 */
 	public function route(string $route, array $params = [], int $code = 302, string $method = 'auto')
 	{
-		$routes = Services::routes(true);
-
-		$route = $routes->reverseRoute($route, ...$params);
+		$route = Services::routes()->reverseRoute($route, ...$params);
 
 		if (! $route)
 		{
@@ -108,36 +107,36 @@ class RedirectResponse extends Response
 	 */
 	public function back(int $code = null, string $method = 'auto')
 	{
-		$this->ensureSession();
+		Services::session();
 
 		return $this->redirect(previous_url(), $method, $code);
 	}
 
 	/**
 	 * Specifies that the current $_GET and $_POST arrays should be
-	 * packaged up with the response. It will then be available via
-	 * the 'old()' helper function.
+	 * packaged up with the response.
+	 *
+	 * It will then be available via the 'old()' helper function.
 	 *
 	 * @return $this
 	 */
 	public function withInput()
 	{
-		$session = $this->ensureSession();
+		$session = Services::session();
 
-		$input = [
+		$session->setFlashdata('_ci_old_input', [
 			'get'  => $_GET ?? [],
 			'post' => $_POST ?? [],
-		];
+		]);
 
-		$session->setFlashdata('_ci_old_input', $input);
+		// If the validation has any errors, transmit those back
+		// so they can be displayed when the validation is handled
+		// within a method different than displaying the form.
+		$validation = Services::validation();
 
-		// If the validator has any errors, transmit those back
-		// so they can be displayed when the validation is
-		// handled within a method different than displaying the form.
-		$validator = Services::validation();
-		if (! empty($validator->getErrors()))
+		if ($validation->getErrors())
 		{
-			$session->setFlashdata('_ci_validation_errors', serialize($validator->getErrors()));
+			$session->setFlashdata('_ci_validation_errors', serialize($validation->getErrors()));
 		}
 
 		return $this;
@@ -153,9 +152,7 @@ class RedirectResponse extends Response
 	 */
 	public function with(string $key, $message)
 	{
-		$session = $this->ensureSession();
-
-		$session->setFlashdata($key, $message);
+		Services::session()->setFlashdata($key, $message);
 
 		return $this;
 	}
@@ -170,25 +167,9 @@ class RedirectResponse extends Response
 	 */
 	public function withCookies()
 	{
-		$cookies = service('response')->getCookies();
-
-		if (empty($cookies))
+		foreach (Services::response()->getCookies() as $cookie)
 		{
-			return $this;
-		}
-
-		foreach ($cookies as $cookie)
-		{
-			$this->setCookie(
-				$cookie['name'],
-				$cookie['value'],
-				$cookie['expires'],
-				$cookie['domain'],
-				$cookie['path'],
-				'', // prefix
-				$cookie['secure'],
-				$cookie['httponly']
-			);
+			$this->cookies[] = $cookie;
 		}
 
 		return $this;
@@ -204,28 +185,11 @@ class RedirectResponse extends Response
 	 */
 	public function withHeaders()
 	{
-		$headers = service('response')->getHeaders();
-
-		if (empty($headers))
-		{
-			return $this;
-		}
-
-		foreach ($headers as $name => $header)
+		foreach (Services::response()->getHeaders() as $name => $header)
 		{
 			$this->setHeader($name, $header->getValue());
 		}
 
 		return $this;
-	}
-
-	/**
-	 * Ensures the session is loaded and started.
-	 *
-	 * @return \CodeIgniter\Session\Session
-	 */
-	protected function ensureSession()
-	{
-		return Services::session();
 	}
 }

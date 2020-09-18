@@ -38,6 +38,7 @@
 
 namespace CodeIgniter\Session;
 
+use CodeIgniter\Session\Exceptions\SessionException;
 use Psr\Log\LoggerAwareTrait;
 
 /**
@@ -54,7 +55,7 @@ class Session implements SessionInterface
 	/**
 	 * Instance of the driver to use.
 	 *
-	 * @var \CodeIgniter\Log\Handlers\HandlerInterface
+	 * @var \SessionHandlerInterface
 	 */
 	protected $driver;
 
@@ -146,6 +147,14 @@ class Session implements SessionInterface
 	protected $cookieSecure = false;
 
 	/**
+	 * Cookie SameSite setting as described in RFC6265
+	 * Must be 'None', 'Lax' or 'Strict'.
+	 *
+	 * @var string
+	 */
+	protected $cookieSameSite = 'Lax';
+
+	/**
 	 * sid regex expression
 	 *
 	 * @var string
@@ -155,7 +164,7 @@ class Session implements SessionInterface
 	/**
 	 * Logger instance to record error messages and warnings.
 	 *
-	 * @var \PSR\Log\LoggerInterface
+	 * @var \Psr\Log\LoggerInterface
 	 */
 	protected $logger;
 
@@ -174,16 +183,22 @@ class Session implements SessionInterface
 		$this->driver = $driver;
 
 		$this->sessionDriverName        = $config->sessionDriver;
-		$this->sessionCookieName        = $config->sessionCookieName;
-		$this->sessionExpiration        = $config->sessionExpiration;
+		$this->sessionCookieName        = $config->sessionCookieName ?? $this->sessionCookieName;
+		$this->sessionExpiration        = $config->sessionExpiration ?? $this->sessionExpiration;
 		$this->sessionSavePath          = $config->sessionSavePath;
-		$this->sessionMatchIP           = $config->sessionMatchIP;
-		$this->sessionTimeToUpdate      = $config->sessionTimeToUpdate;
-		$this->sessionRegenerateDestroy = $config->sessionRegenerateDestroy;
+		$this->sessionMatchIP           = $config->sessionMatchIP ?? $this->sessionMatchIP;
+		$this->sessionTimeToUpdate      = $config->sessionTimeToUpdate ?? $this->sessionTimeToUpdate;
+		$this->sessionRegenerateDestroy = $config->sessionRegenerateDestroy ?? $this->sessionRegenerateDestroy;
 
-		$this->cookieDomain = $config->cookieDomain;
-		$this->cookiePath   = $config->cookiePath;
-		$this->cookieSecure = $config->cookieSecure;
+		$this->cookieDomain   = $config->cookieDomain ?? $this->cookieDomain;
+		$this->cookiePath     = $config->cookiePath ?? $this->cookiePath;
+		$this->cookieSecure   = $config->cookieSecure ?? $this->cookieSecure;
+		$this->cookieSameSite = $config->cookieSameSite ?? $this->cookieSameSite;
+
+		if (! in_array(strtolower($this->cookieSameSite), ['', 'none', 'lax', 'strict'], true))
+		{
+			throw SessionException::forInvalidSameSiteSetting($this->cookieSameSite);
+		}
 
 		helper('array');
 	}
@@ -205,23 +220,19 @@ class Session implements SessionInterface
 			return;
 			// @codeCoverageIgnoreEnd
 		}
-		elseif ((bool) ini_get('session.auto_start'))
+
+		if ((bool) ini_get('session.auto_start'))
 		{
 			$this->logger->error('Session: session.auto_start is enabled in php.ini. Aborting.');
 
 			return;
 		}
-		elseif (session_status() === PHP_SESSION_ACTIVE)
+
+		if (session_status() === PHP_SESSION_ACTIVE)
 		{
 			$this->logger->warning('Session: Sessions is enabled, and one exists.Please don\'t $session->start();');
 
 			return;
-		}
-
-		if (! $this->driver instanceof \SessionHandlerInterface)
-		{
-			$this->logger->error("Session: Handler '" . $this->driver .
-					"' doesn't implement SessionHandlerInterface. Aborting.");
 		}
 
 		$this->configure();
@@ -303,9 +314,41 @@ class Session implements SessionInterface
 			ini_set('session.name', $this->sessionCookieName);
 		}
 
-		session_set_cookie_params(
-				$this->sessionExpiration, $this->cookiePath, $this->cookieDomain, $this->cookieSecure, true // HTTP only; Yes, this is intentional and not configurable for security reasons.
-		);
+		if (PHP_VERSION_ID < 70300)
+		{
+			$sameSite = '';
+			if ($this->cookieSameSite !== '')
+			{
+				$sameSite = '; samesite=' . $this->cookieSameSite;
+			}
+
+			session_set_cookie_params(
+				$this->sessionExpiration,
+				$this->cookiePath . $sameSite, // Hacky way to set SameSite for PHP 7.2 and earlier
+				$this->cookieDomain,
+				$this->cookieSecure,
+				true // HTTP only; Yes, this is intentional and not configurable for security reasons.
+			);
+		}
+		else
+		{
+			// PHP 7.3 adds support for setting samesite in session_set_cookie_params()
+			$params = [
+				'lifetime' => $this->sessionExpiration,
+				'path'     => $this->cookiePath,
+				'domain'   => $this->cookieDomain,
+				'secure'   => $this->cookieSecure,
+				'httponly' => true, // HTTP only; Yes, this is intentional and not configurable for security reasons.
+			];
+
+			if ($this->cookieSameSite !== '')
+			{
+				$params['samesite'] = $this->cookieSameSite;
+				ini_set('session.cookie_samesite', $this->cookieSameSite);
+			}
+
+			session_set_cookie_params($params);
+		}
 
 		//if (empty($this->sessionExpiration))
 		if (! isset($this->sessionExpiration))
@@ -314,7 +357,7 @@ class Session implements SessionInterface
 		}
 		else
 		{
-			ini_set('session.gc_maxlifetime', (int) $this->sessionExpiration);
+			ini_set('session.gc_maxlifetime', (string) $this->sessionExpiration);
 		}
 
 		if (! empty($this->sessionSavePath))
@@ -323,10 +366,10 @@ class Session implements SessionInterface
 		}
 
 		// Security is king
-		ini_set('session.use_trans_sid', 0);
-		ini_set('session.use_strict_mode', 1);
-		ini_set('session.use_cookies', 1);
-		ini_set('session.use_only_cookies', 1);
+		ini_set('session.use_trans_sid', '0');
+		ini_set('session.use_strict_mode', '1');
+		ini_set('session.use_cookies', '1');
+		ini_set('session.use_only_cookies', '1');
 
 		$this->configureSidLength();
 	}
@@ -361,7 +404,7 @@ class Session implements SessionInterface
 			$bits = ($sid_length * $bits_per_character);
 			// Add as many more characters as necessary to reach at least 160 bits
 			$sid_length += (int) ceil((160 % $bits) / $bits_per_character);
-			ini_set('session.sid_length', $sid_length);
+			ini_set('session.sid_length', (string) $sid_length);
 		}
 
 		// Yes, 4,5,6 are the only known possible values as of 2016-10-27
@@ -503,7 +546,8 @@ class Session implements SessionInterface
 		{
 			return $value;
 		}
-		elseif (empty($_SESSION))
+
+		if (empty($_SESSION))
 		{
 			return $key === null ? [] : null;
 		}
@@ -620,7 +664,8 @@ class Session implements SessionInterface
 		{
 			return $_SESSION[$key];
 		}
-		elseif ($key === 'session_id')
+
+		if ($key === 'session_id')
 		{
 			return session_id();
 		}
@@ -762,7 +807,7 @@ class Session implements SessionInterface
 			return;
 		}
 
-		is_array($key) || $key = [$key];
+		is_array($key) || $key = [$key]; // @phpstan-ignore-line
 
 		foreach ($key as $k)
 		{
@@ -937,7 +982,7 @@ class Session implements SessionInterface
 			return;
 		}
 
-		is_array($key) || $key = [$key];
+		is_array($key) || $key = [$key]; // @phpstan-ignore-line
 
 		foreach ($key as $k)
 		{
@@ -1014,9 +1059,46 @@ class Session implements SessionInterface
 	 */
 	protected function setCookie()
 	{
-		setcookie(
-				$this->sessionCookieName, session_id(), (empty($this->sessionExpiration) ? 0 : time() + $this->sessionExpiration), $this->cookiePath, $this->cookieDomain, $this->cookieSecure, true
-		);
+		if (PHP_VERSION_ID < 70300)
+		{
+			$sameSite = '';
+			if ($this->cookieSameSite !== '')
+			{
+				$sameSite = '; samesite=' . $this->cookieSameSite;
+			}
+
+			setcookie(
+				$this->sessionCookieName,
+				session_id(),
+				empty($this->sessionExpiration) ? 0 : time() + $this->sessionExpiration,
+				$this->cookiePath . $sameSite, // Hacky way to set SameSite for PHP 7.2 and earlier
+				$this->cookieDomain,
+				$this->cookieSecure,
+				true
+			);
+		}
+		else
+		{
+			// PHP 7.3 adds another function signature allowing setting of samesite
+			$params = [
+				'expires'  => empty($this->sessionExpiration) ? 0 : time() + $this->sessionExpiration,
+				'path'     => $this->cookiePath,
+				'domain'   => $this->cookieDomain,
+				'secure'   => $this->cookieSecure,
+				'httponly' => true,
+			];
+
+			if ($this->cookieSameSite !== '')
+			{
+				$params['samesite'] = $this->cookieSameSite;
+			}
+
+			setcookie(
+				$this->sessionCookieName,
+				session_id(),
+				$params
+			);
+		}
 	}
 
 	//--------------------------------------------------------------------

@@ -93,10 +93,10 @@ class MigrateRefresh extends BaseCommand
 	 * @var array
 	 */
 	protected $options = [
-		'-n'   => 'Set migration namespace',
-		'-g'   => 'Set database group',
-		'-all' => 'Set latest for all namespace, will ignore (-n) option',
-		'-f'   => 'Force command - this option allows you to bypass the confirmation question when running this command in a production environment',
+		'-n'    => 'Set migration namespace',
+		'-g'    => 'Set database group',
+		'--all' => 'Set latest for all namespace, will ignore (-n) option',
+		'-f'    => 'Force command - this option allows you to bypass the confirmation question when running this command in a production environment',
 	];
 
 	/**
@@ -105,19 +105,19 @@ class MigrateRefresh extends BaseCommand
 	 *
 	 * @param array $params
 	 */
-	public function run(array $params = [])
+	public function run(array $params)
 	{
-		$params = ['-b' => 0];
+		$params = ['b' => 0];
 
 		if (ENVIRONMENT === 'production')
 		{
-			$force = $params['-f'] ?? CLI::getOption('f');
+			$force = CLI::getOption('f');
 			if (is_null($force) && CLI::prompt(lang('Migrations.refreshConfirm'), ['y', 'n']) === 'n')
 			{
 				return;
 			}
 
-			$params['-f'] = '';
+			$params['f'] = null;
 		}
 
 		$this->call('migrate:rollback', $params);

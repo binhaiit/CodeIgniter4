@@ -8,7 +8,7 @@ Database Configuration
 
 CodeIgniter has a config file that lets you store your database
 connection values (username, password, database name, etc.). The config
-file is located at app/Config/Database.php. You can also set
+file is located at **app/Config/Database.php**. You can also set
 database connection values in the .env file. See below for more details.
 
 The config settings are stored in a class property that is an array with this
@@ -24,8 +24,6 @@ prototype::
 		'DBPrefix' => '',
 		'pConnect' => TRUE,
 		'DBDebug'  => TRUE,
-		'cacheOn'  => FALSE,
-		'cacheDir' => '',
 		'charset'  => 'utf8',
 		'DBCollat' => 'utf8_general_ci',
 		'swapPre'  => '',
@@ -55,6 +53,18 @@ driver's underlying native PHP extension, like this::
 .. note:: If you do not specify a DSN string for a driver that requires it, CodeIgniter
 	will try to build it with the rest of the provided settings.
 
+You can also set a Data Source Name in universal manner (URL like). In that case DSNs must have this prototype::
+	
+	$default['DSN'] = 'DBDriver://username:password@hostname:port/database';
+
+To override default config values when connecting with a universal version of the DSN string, 
+add the config variables as a query string::
+
+	// MySQLi
+	$default['DSN'] = 'MySQLi://username:password@hostname:3306/database?charset=utf8&DBCollat=utf8_general_ci';
+	// Postgre
+	$default['DSN'] = 'Postgre://username:password@hostname:5432/database?charset=utf8&connect_timeout=5&sslmode=1';
+
 .. note:: If you provide a DSN string and it is missing some valid settings (e.g. the
 	database character set), which are present in the rest of the configuration
 	fields, CodeIgniter will append them.
@@ -72,8 +82,6 @@ These failovers can be specified by setting the failover for a connection like t
 				'DBPrefix' => '',
 				'pConnect' => TRUE,
 				'DBDebug'  => TRUE,
-				'cacheOn'  => FALSE,
-				'cacheDir' => '',
 				'charset'  => 'utf8',
 				'DBCollat' => 'utf8_general_ci',
 				'swapPre'  => '',
@@ -90,8 +98,6 @@ These failovers can be specified by setting the failover for a connection like t
 				'DBPrefix' => '',
 				'pConnect' => TRUE,
 				'DBDebug'  => TRUE,
-				'cacheOn'  => FALSE,
-				'cacheDir' => '',
 				'charset'  => 'utf8',
 				'DBCollat' => 'utf8_general_ci',
 				'swapPre'  => '',
@@ -119,8 +125,6 @@ example, to set up a "test" environment you would do this::
 		'DBPrefix' => '',
 		'pConnect' => TRUE,
 		'DBDebug'  => TRUE,
-		'cacheOn'  => FALSE,
-		'cacheDir' => '',
 		'charset'  => 'utf8',
 		'DBCollat' => 'utf8_general_ci',
 		'swapPre'  => '',
@@ -186,8 +190,6 @@ Explanation of Values:
 			installations to share one database.
 **pConnect**		TRUE/FALSE (boolean) - Whether to use a persistent connection.
 **DBDebug**		TRUE/FALSE (boolean) - Whether database errors should be displayed.
-**cacheOn**		TRUE/FALSE (boolean) - Whether database query caching is enabled.
-**cacheDir**		The absolute server path to your database query cache directory.
 **charset**	    	The character set used in communicating with the database.
 **DBCollat**		The character collation used in communicating with the database
 

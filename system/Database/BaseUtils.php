@@ -59,21 +59,21 @@ abstract class BaseUtils
 	/**
 	 * List databases statement
 	 *
-	 * @var string
+	 * @var string|boolean
 	 */
 	protected $listDatabases = false;
 
 	/**
 	 * OPTIMIZE TABLE statement
 	 *
-	 * @var string
+	 * @var string|boolean
 	 */
 	protected $optimizeTable = false;
 
 	/**
 	 * REPAIR TABLE statement
 	 *
-	 * @var string
+	 * @var string|boolean
 	 */
 	protected $repairTable = false;
 
@@ -82,7 +82,7 @@ abstract class BaseUtils
 	/**
 	 * Class constructor
 	 *
-	 * @param ConnectionInterface|object $db
+	 * @param ConnectionInterface $db
 	 */
 	public function __construct(ConnectionInterface &$db)
 	{
@@ -104,7 +104,8 @@ abstract class BaseUtils
 		{
 			return $this->db->dataCache['db_names'];
 		}
-		elseif ($this->listDatabases === false)
+
+		if ($this->listDatabases === false)
 		{
 			if ($this->db->DBDebug)
 			{
@@ -139,7 +140,7 @@ abstract class BaseUtils
 	 */
 	public function databaseExists(string $database_name): bool
 	{
-		return in_array($database_name, $this->listDatabases());
+		return in_array($database_name, $this->listDatabases(), true);
 	}
 
 	//--------------------------------------------------------------------
@@ -312,7 +313,10 @@ abstract class BaseUtils
 		}
 
 		// Create variables for convenience
-		extract($params);
+		$root    = $params['root'];
+		$newline = $params['newline'];
+		$tab     = $params['tab'];
+		$element = $params['element'];
 
 		// Load the xml helper
 		helper('xml');

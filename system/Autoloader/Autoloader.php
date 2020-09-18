@@ -39,6 +39,9 @@
 
 namespace CodeIgniter\Autoloader;
 
+use Config\Autoload;
+use Config\Modules;
+
 /**
  * CodeIgniter Autoloader
  *
@@ -100,11 +103,11 @@ class Autoloader
 	 * the valid parts that we'll need.
 	 *
 	 * @param \Config\Autoload $config
-	 * @param \Config\Modules  $moduleConfig
+	 * @param \Config\Modules  $modules
 	 *
 	 * @return $this
 	 */
-	public function initialize(\Config\Autoload $config, \Config\Modules $moduleConfig)
+	public function initialize(Autoload $config, Modules $modules)
 	{
 		// We have to have one or the other, though we don't enforce the need
 		// to have both present in order to work.
@@ -124,7 +127,7 @@ class Autoloader
 		}
 
 		// Should we load through Composer's namespaces, also?
-		if ($moduleConfig->discoverInComposer)
+		if ($modules->discoverInComposer)
 		{
 			$this->discoverComposerNamespaces();
 		}
@@ -147,11 +150,12 @@ class Autoloader
 		spl_autoload_extensions('.php,.inc');
 
 		// Prepend the PSR4  autoloader for maximum performance.
-		spl_autoload_register([$this, 'loadClass'], true, true);
+		spl_autoload_register([$this, 'loadClass'], true, true); // @phpstan-ignore-line
 
 		// Now prepend another loader for the files in our class map.
-		$config = is_array($this->classmap) ? $this->classmap : [];
+		$config = $this->classmap;
 
+		// @phpstan-ignore-next-line
 		spl_autoload_register(function ($class) use ($config) {
 			if (empty($config[$class]))
 			{
@@ -172,7 +176,7 @@ class Autoloader
 	 * @param array|string $namespace
 	 * @param string       $path
 	 *
-	 * @return Autoloader
+	 * @return $this
 	 */
 	public function addNamespace($namespace, string $path = null)
 	{
@@ -186,18 +190,18 @@ class Autoloader
 				{
 					foreach ($path as $dir)
 					{
-						$this->prefixes[$prefix][] = rtrim($dir, '/') . '/';
+						$this->prefixes[$prefix][] = rtrim($dir, '\\/') . DIRECTORY_SEPARATOR;
 					}
 
 					continue;
 				}
 
-				$this->prefixes[$prefix][] = rtrim($path, '/') . '/';
+				$this->prefixes[$prefix][] = rtrim($path, '\\/') . DIRECTORY_SEPARATOR;
 			}
 		}
 		else
 		{
-			$this->prefixes[trim($namespace, '\\')][] = rtrim($path, '/') . '/';
+			$this->prefixes[trim($namespace, '\\')][] = rtrim($path, '\\/') . DIRECTORY_SEPARATOR;
 		}
 
 		return $this;
@@ -210,7 +214,7 @@ class Autoloader
 	 *
 	 * If a prefix param is set, returns only paths to the given prefix.
 	 *
-	 * @var string|null $prefix
+	 * @param string|null $prefix
 	 *
 	 * @return array
 	 */
@@ -231,11 +235,14 @@ class Autoloader
 	 *
 	 * @param string $namespace
 	 *
-	 * @return Autoloader
+	 * @return $this
 	 */
 	public function removeNamespace(string $namespace)
 	{
-		unset($this->prefixes[trim($namespace, '\\')]);
+		if (isset($this->prefixes[trim($namespace, '\\')]))
+		{
+			unset($this->prefixes[trim($namespace, '\\')]);
+		}
 
 		return $this;
 	}
@@ -280,6 +287,15 @@ class Autoloader
 	{
 		if (strpos($class, '\\') === false)
 		{
+			$class    = 'Config\\' . $class;
+			$filePath = APPPATH . str_replace('\\', DIRECTORY_SEPARATOR, $class) . '.php';
+			$filename = $this->requireFile($filePath);
+
+			if ($filename)
+			{
+				return $filename;
+			}
+
 			return false;
 		}
 
@@ -287,12 +303,11 @@ class Autoloader
 		{
 			foreach ($directories as $directory)
 			{
-				$directory = rtrim($directory, '/');
+				$directory = rtrim($directory, '\\/');
 
 				if (strpos($class, $namespace) === 0)
 				{
-					$filePath = $directory . str_replace('\\', '/',
-							substr($class, strlen($namespace))) . '.php';
+					$filePath = $directory . str_replace('\\', DIRECTORY_SEPARATOR, substr($class, strlen($namespace))) . '.php';
 					$filename = $this->requireFile($filePath);
 
 					if ($filename)
@@ -333,7 +348,7 @@ class Autoloader
 			APPPATH . 'Models/',
 		];
 
-		$class = str_replace('\\', '/', $class) . '.php';
+		$class = str_replace('\\', DIRECTORY_SEPARATOR, $class) . '.php';
 
 		foreach ($paths as $path)
 		{

@@ -137,14 +137,14 @@ class Request extends Message implements RequestInterface
 
 			if ($spoof)
 			{
-				for ($i = 0, $c = count($proxy_ips); $i < $c; $i ++)
+				foreach ($proxy_ips as $proxy_ip)
 				{
 					// Check if we have an IP address or a subnet
-					if (strpos($proxy_ips[$i], '/') === false)
+					if (strpos($proxy_ip, '/') === false)
 					{
 						// An IP address (and not a subnet) is specified.
 						// We can compare right away.
-						if ($proxy_ips[$i] === $this->ipAddress)
+						if ($proxy_ip === $this->ipAddress)
 						{
 							$this->ipAddress = $spoof;
 							break;
@@ -154,10 +154,11 @@ class Request extends Message implements RequestInterface
 					}
 
 					// We have a subnet ... now the heavy lifting begins
+					// // @phpstan-ignore-next-line
 					isset($separator) || $separator = $this->isValidIP($this->ipAddress, 'ipv6') ? ':' : '.';
 
 					// If the proxy entry doesn't match the IP protocol - skip it
-					if (strpos($proxy_ips[$i], $separator) === false)
+					if (strpos($proxy_ip, $separator) === false) // @phpstan-ignore-line
 					{
 						continue;
 					}
@@ -165,7 +166,7 @@ class Request extends Message implements RequestInterface
 					// Convert the REMOTE_ADDR IP address to binary, if needed
 					if (! isset($ip, $sprintf))
 					{
-						if ($separator === ':')
+						if ($separator === ':') // @phpstan-ignore-line
 						{
 							// Make sure we're have the "full" IPv6 format
 							$ip = explode(':', str_replace('::', str_repeat(':', 9 - substr_count($this->ipAddress, ':')), $this->ipAddress
@@ -189,10 +190,10 @@ class Request extends Message implements RequestInterface
 					}
 
 					// Split the netmask length off the network address
-					sscanf($proxy_ips[$i], '%[^/]/%d', $netaddr, $masklen);
+					sscanf($proxy_ip, '%[^/]/%d', $netaddr, $masklen);
 
 					// Again, an IPv6 address is most likely in a compressed form
-					if ($separator === ':')
+					if ($separator === ':') // @phpstan-ignore-line
 					{
 						$netaddr = explode(':', str_replace('::', str_repeat(':', 9 - substr_count($netaddr, ':')), $netaddr));
 						for ($i = 0; $i < 8; $i ++)
@@ -235,7 +236,7 @@ class Request extends Message implements RequestInterface
 	 */
 	public function isValidIP(string $ip = null, string $which = null): bool
 	{
-		switch (strtolower( (string) $which))
+		switch (strtolower((string) $which))
 		{
 			case 'ipv4':
 				$which = FILTER_FLAG_IPV4;
@@ -319,7 +320,7 @@ class Request extends Message implements RequestInterface
 	 * Allows manually setting the value of PHP global, like $_GET, $_POST, etc.
 	 *
 	 * @param string $method
-	 * @param $value
+	 * @param mixed  $value
 	 *
 	 * @return $this
 	 */
@@ -420,6 +421,7 @@ class Request extends Message implements RequestInterface
 			$value = $this->globals[$method][$index] ?? null;
 		}
 
+		// @phpstan-ignore-next-line
 		if (is_array($value) && ($filter !== null || $flags !== null))
 		{
 			// Iterate over array and append filter and flags

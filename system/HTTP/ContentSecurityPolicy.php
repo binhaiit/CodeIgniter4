@@ -226,7 +226,7 @@ class ContentSecurityPolicy
 	 */
 	public function __construct(\Config\ContentSecurityPolicy $config)
 	{
-		foreach ($config as $setting => $value)
+		foreach ($config as $setting => $value) // @phpstan-ignore-line
 		{
 			if (isset($this->{$setting}))
 			{
@@ -819,7 +819,7 @@ class ContentSecurityPolicy
 
 			if ($reportOnly === true)
 			{
-				$reportSources[] = in_array($value, $this->validSources) ? "'{$value}'" : $value;
+				$reportSources[] = in_array($value, $this->validSources, true) ? "'{$value}'" : $value;
 			}
 			else
 			{
@@ -829,7 +829,7 @@ class ContentSecurityPolicy
 				}
 				else
 				{
-					$sources[] = in_array($value, $this->validSources) ? "'{$value}'" : $value;
+					$sources[] = in_array($value, $this->validSources, true) ? "'{$value}'" : $value;
 				}
 			}
 		}

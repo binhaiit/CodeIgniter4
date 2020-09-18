@@ -1,4 +1,6 @@
-<?php namespace CodeIgniter\Database\Live;
+<?php
+
+namespace CodeIgniter\Database\Live;
 
 use BadMethodCallException;
 use CodeIgniter\Config\Config;
@@ -19,6 +21,7 @@ use Tests\Support\Models\StringifyPkeyModel;
 use Tests\Support\Models\UserModel;
 use Tests\Support\Models\ValidErrorsModel;
 use Tests\Support\Models\ValidModel;
+use Tests\Support\Models\WithoutAutoincrementModel;
 
 /**
  * @group DatabaseLive
@@ -1084,24 +1087,80 @@ class ModelTest extends CIDatabaseTestCase
 
 	//--------------------------------------------------------------------
 
-	public function testFindEvent()
-	{
-		$model = new EventModel();
-
-		$model->find(1);
-
-		$this->assertTrue($model->hasToken('afterFind'));
-	}
-
-	//--------------------------------------------------------------------
-
 	public function testDeleteEvent()
 	{
 		$model = new EventModel();
 
 		$model->delete(1);
 
+		$this->assertTrue($model->hasToken('beforeDelete'));
 		$this->assertTrue($model->hasToken('afterDelete'));
+	}
+
+	//--------------------------------------------------------------------
+
+	public function testFindEvent()
+	{
+		$model = new EventModel();
+
+		$model->find(1);
+
+		$this->assertTrue($model->hasToken('beforeFind'));
+		$this->assertTrue($model->hasToken('afterFind'));
+	}
+
+	public function testBeforeFindReturnsData()
+	{
+		$model                       = new EventModel();
+		$model->beforeFindReturnData = true;
+
+		$result = $model->find(1);
+
+		$this->assertTrue($model->hasToken('beforeFind'));
+		$this->assertEquals($result, 'foobar');
+	}
+
+	public function testBeforeFindReturnDataPreventsAfterFind()
+	{
+		$model                       = new EventModel();
+		$model->beforeFindReturnData = true;
+
+		$model->find(1);
+
+		$this->assertFalse($model->hasToken('afterFind'));
+	}
+
+	public function testFindEventSingletons()
+	{
+		$model = new EventModel();
+
+		// afterFind
+		$model->first();
+		$this->assertEquals(true, $model->eventData['singleton']);
+
+		$model->find(1);
+		$this->assertEquals(true, $model->eventData['singleton']);
+
+		$model->find();
+		$this->assertEquals(false, $model->eventData['singleton']);
+
+		$model->findAll();
+		$this->assertEquals(false, $model->eventData['singleton']);
+
+		// beforeFind
+		$model->beforeFindReturnData = true;
+
+		$model->first();
+		$this->assertEquals(true, $model->eventData['singleton']);
+
+		$model->find(1);
+		$this->assertEquals(true, $model->eventData['singleton']);
+
+		$model->find();
+		$this->assertEquals(false, $model->eventData['singleton']);
+
+		$model->findAll();
+		$this->assertEquals(false, $model->eventData['singleton']);
 	}
 
 	//--------------------------------------------------------------------
@@ -1372,6 +1431,66 @@ class ModelTest extends CIDatabaseTestCase
 
 		$error = $model->errors();
 		$this->assertTrue(isset($error['country']));
+	}
+
+	//--------------------------------------------------------------------
+
+	public function testUpdateBatchWithEntity()
+	{
+		$entity1 = new class extends Entity
+		{
+			protected $id;
+			protected $name;
+			protected $email;
+			protected $country;
+			protected $deleted;
+			protected $created_at;
+			protected $updated_at;
+
+			protected $_options = [
+				'datamap' => [],
+				'dates'   => [
+					'created_at',
+					'updated_at',
+					'deleted_at',
+				],
+				'casts'   => [],
+			];
+		};
+
+		$entity2   = new class extends Entity
+		{
+			protected $id;
+			protected $name;
+			protected $email;
+			protected $country;
+			protected $deleted;
+			protected $created_at;
+			protected $updated_at;
+
+			protected $_options = [
+				'datamap' => [],
+				'dates'   => [
+					'created_at',
+					'updated_at',
+					'deleted_at',
+				],
+				'casts'   => [],
+			];
+		};
+		$testModel = new UserModel();
+
+		$entity1->id      = 1;
+		$entity1->name    = 'Jones Martin';
+		$entity1->country = 'India';
+		$entity1->deleted = 0;
+
+		$entity2->id      = 4;
+		$entity2->name    = 'Jones Martin';
+		$entity2->country = 'India';
+		$entity2->deleted = 0;
+
+		$this->assertEquals(2, $testModel->updateBatch([$entity1, $entity2], 'id'));
 	}
 
 	//--------------------------------------------------------------------
@@ -1659,9 +1778,9 @@ class ModelTest extends CIDatabaseTestCase
 
 	public function testSetTable()
 	{
-		$model = new JobModel();
+		$model = new SecondaryModel();
 
-		$model->setTable('db_job');
+		$model->setTable('job');
 
 		$data = [
 			'name'        => 'Apprentice',
@@ -1939,6 +2058,42 @@ class ModelTest extends CIDatabaseTestCase
 
 	//--------------------------------------------------------------------
 
+	public function testInsertBatchNewEntityWithDateTime()
+	{
+		$entity    = new class extends Entity{
+			protected $id;
+			protected $name;
+			protected $email;
+			protected $country;
+			protected $deleted;
+			protected $created_at;
+			protected $updated_at;
+
+			protected $_options = [
+				'datamap' => [],
+				'dates'   => [
+					'created_at',
+					'updated_at',
+					'deleted_at',
+				],
+				'casts'   => [],
+			];
+		};
+		$testModel = new UserModel();
+
+		$entity->name       = 'Mark';
+		$entity->email      = 'mark@example.com';
+		$entity->country    = 'India';
+		$entity->deleted    = 0;
+		$entity->created_at = new Time('now');
+
+		$this->setPrivateProperty($testModel, 'useTimestamps', true);
+
+		$this->assertEquals(2, $testModel->insertBatch([$entity, $entity]));
+	}
+
+	//--------------------------------------------------------------------
+
 	public function testSaveNewEntityWithDateTime()
 	{
 		$entity    = new class extends Entity{
@@ -2184,6 +2339,75 @@ class ModelTest extends CIDatabaseTestCase
 
 	//--------------------------------------------------------------------
 
+	public function testUseAutoIncrementSetToFalseInsertException()
+	{
+		$this->expectException(DataException::class);
+		$this->expectExceptionMessage('There is no primary key defined when trying to make insert');
+
+		$model = new WithoutAutoIncrementModel();
+
+		$insert = [
+			'value' => 'some different value',
+		];
+
+		$model->insert($insert);
+	}
+
+	public function testUseAutoIncrementSetToFalseInsert()
+	{
+		$model = new WithoutAutoIncrementModel();
+
+		$insert = [
+			'key'   => 'some_random_key',
+			'value' => 'some different value',
+		];
+
+		$model->insert($insert);
+
+		$this->assertEquals($insert['key'], $model->getInsertID());
+		$this->seeInDatabase('without_auto_increment', $insert);
+	}
+
+	public function testUseAutoIncrementSetToFalseUpdate()
+	{
+		$model = new WithoutAutoIncrementModel();
+
+		$key    = 'key';
+		$update = [
+			'value' => 'some different value',
+		];
+
+		$model->update($key, $update);
+
+		$this->seeInDatabase('without_auto_increment', ['key' => $key, 'value' => $update['value']]);
+	}
+
+	public function testUseAutoIncrementSetToFalseSave()
+	{
+		$model = new WithoutAutoIncrementModel();
+
+		$insert = [
+			'key'   => 'some_random_key',
+			'value' => 'some value',
+		];
+
+		$model->save($insert);
+
+		$this->assertEquals($insert['key'], $model->getInsertID());
+		$this->seeInDatabase('without_auto_increment', $insert);
+
+		$update = [
+			'key'   => 'some_random_key',
+			'value' => 'some different value',
+		];
+		$model->save($update);
+
+		$this->assertEquals($insert['key'], $model->getInsertID());
+		$this->seeInDatabase('without_auto_increment', $update);
+	}
+
+	//--------------------------------------------------------------------
+
 	public function testMagicIssetTrue()
 	{
 		$model = new UserModel();
@@ -2390,4 +2614,27 @@ class ModelTest extends CIDatabaseTestCase
 		$this->assertFalse($this->getPrivateProperty($model, 'tempUseSoftDeletes'));
 	}
 
+	public function testSetAllowedFields()
+	{
+		$allowed1 = [
+			'id',
+			'created_at',
+		];
+		$allowed2 = [
+			'id',
+			'updated_at',
+		];
+
+		$model = new class extends Model {
+			protected $allowedFields = [
+				'id',
+				'created_at',
+			];
+		};
+
+		$this->assertSame($allowed1, $this->getPrivateProperty($model, 'allowedFields'));
+
+		$model->setAllowedFields($allowed2);
+		$this->assertSame($allowed2, $this->getPrivateProperty($model, 'allowedFields'));
+	}
 }

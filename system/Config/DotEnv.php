@@ -77,7 +77,7 @@ class DotEnv
 	public function load(): bool
 	{
 		$vars = $this->parse();
-		
+
 		return ($vars === null ? false : true);
 	}
 
@@ -142,10 +142,12 @@ class DotEnv
 		{
 			putenv("$name=$value");
 		}
+
 		if (empty($_ENV[$name]))
 		{
 			$_ENV[$name] = $value;
 		}
+
 		if (empty($_SERVER[$name]))
 		{
 			$_SERVER[$name] = $value;
@@ -165,7 +167,7 @@ class DotEnv
 	 */
 	public function normaliseVariable(string $name, string $value = ''): array
 	{
-		// Split our compound string into it's parts.
+		// Split our compound string into its parts.
 		if (strpos($name, '=') !== false)
 		{
 			list($name, $value) = explode('=', $name, 2);
@@ -258,7 +260,7 @@ class DotEnv
 	 * This was borrowed from the excellent phpdotenv with very few changes.
 	 * https://github.com/vlucas/phpdotenv
 	 *
-	 * @param $value
+	 * @param string $value
 	 *
 	 * @return string
 	 */
@@ -266,12 +268,10 @@ class DotEnv
 	{
 		if (strpos($value, '$') !== false)
 		{
-			$loader = $this;
-
 			$value = preg_replace_callback(
 				'/\${([a-zA-Z0-9_]+)}/',
-				function ($matchedPatterns) use ($loader) {
-					$nestedVariable = $loader->getVariable($matchedPatterns[1]);
+				function ($matchedPatterns) {
+					$nestedVariable = $this->getVariable($matchedPatterns[1]);
 
 					if (is_null($nestedVariable))
 					{

@@ -35,14 +35,14 @@ but may leave the methods empty if they are not needed. A skeleton filter class 
 
     class MyFilter implements FilterInterface
     {
-        public function before(RequestInterface $request)
+        public function before(RequestInterface $request, $arguments = null)
         {
             // Do something here
         }
 
         //--------------------------------------------------------------------
 
-        public function after(RequestInterface $request, ResponseInterface $response)
+        public function after(RequestInterface $request, ResponseInterface $response, $arguments = null)
         {
             // Do something here
         }
@@ -58,7 +58,7 @@ Since before filters are executed prior to your controller being executed, you m
 actions in the controller from happening. You can do this by passing back anything that is not the request object.
 This is typically used to perform redirects, like in this example::
 
-    public function before(RequestInterface $request)
+    public function before(RequestInterface $request, $arguments = null)
     {
         $auth = service('auth');
 
@@ -179,8 +179,19 @@ a list of URI patterns that filter should apply to::
         'bar' => ['before' => ['api/*', 'admin/*']]
     ];
 
+Filter arguments
+=================
+
+When configuring filters, additional arguments may be passed to a filter when setting up the route::
+
+    $routes->add('users/delete/(:segment)', 'AdminController::index', ['filter' => 'admin-auth:dual,noreturn']);
+
+In this example, the array ``['dual', 'noreturn']`` will be passed in ``$arguments`` to the filter's ``before()`` and ``after()`` implementation methods.
+
 ****************
 Provided Filters
 ****************
 
-Three filters are bundled with CodeIgniter4: Honeypot, Security, and DebugToolbar.
+Three filters are bundled with CodeIgniter4: ``Honeypot``, ``Security``, and ``DebugToolbar``.
+
+.. note:: The filters are executed in the declared order  that is defined in the config file, but there is one exception to this and it concerns the ``DebugToolbar``, which is always executed last. This is because ``DebugToolbar`` should be able to register everything that happens in other filters.

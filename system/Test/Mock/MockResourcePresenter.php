@@ -1,9 +1,13 @@
-<?php namespace CodeIgniter\Test\Mock;
+<?php
 
+namespace CodeIgniter\Test\Mock;
+
+use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\RESTful\ResourcePresenter;
 
 class MockResourcePresenter extends ResourcePresenter
 {
+	use ResponseTrait;
 
 	public function getModel()
 	{
@@ -19,5 +23,4 @@ class MockResourcePresenter extends ResourcePresenter
 	{
 		return $this->format;
 	}
-
 }

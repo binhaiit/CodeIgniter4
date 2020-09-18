@@ -234,7 +234,7 @@ class Validation implements ValidationInterface
 	protected function processRules(string $field, string $label = null, $value, $rules = null, array $data): bool
 	{
 		// If the if_exist rule is defined...
-		if (in_array('if_exist', $rules))
+		if (in_array('if_exist', $rules, true))
 		{
 			// and the current field does not exists in the input data
 			// we can return true. Ignoring all other rules to this field.
@@ -248,7 +248,7 @@ class Validation implements ValidationInterface
 
 		if (in_array('permit_empty', $rules))
 		{
-			if (! in_array('required', $rules) && (is_array($value) ? empty($value) : (trim($value) === '')))
+			if (! in_array('required', $rules, true) && (is_array($value) ? empty($value) : (trim($value) === '')))
 			{
 				$passed = true;
 
@@ -259,7 +259,7 @@ class Validation implements ValidationInterface
 						$rule  = $match[1];
 						$param = $match[2];
 
-						if (! in_array($rule, ['required_with', 'required_without']))
+						if (! in_array($rule, ['required_with', 'required_without'], true))
 						{
 							continue;
 						}
@@ -344,7 +344,7 @@ class Validation implements ValidationInterface
 				}
 
 				$this->errors[$field] = is_null($error) ? $this->getErrorMessage($rule, $field, $label, $param, $value)
-					: $error;
+					: $error; // @phpstan-ignore-line
 
 				return false;
 			}
@@ -365,7 +365,7 @@ class Validation implements ValidationInterface
 	 */
 	public function withRequest(RequestInterface $request): ValidationInterface
 	{
-		if (in_array($request->getMethod(), ['put', 'patch', 'delete']))
+		if (in_array($request->getMethod(), ['put', 'patch', 'delete'], true))
 		{
 			$this->data = $request->getRawInput();
 		}
@@ -758,6 +758,7 @@ class Validation implements ValidationInterface
 		// passed along from a redirect_with_input request.
 		if (empty($this->errors) && ! is_cli())
 		{
+			// @phpstan-ignore-next-line
 			if (isset($_SESSION, $_SESSION['_ci_validation_errors']))
 			{
 				$this->errors = unserialize($_SESSION['_ci_validation_errors']);

@@ -99,9 +99,16 @@ class Model
 	protected $primaryKey = 'id';
 
 	/**
+	 * Whether primary key uses auto increment.
+	 *
+	 * @var boolean
+	 */
+	protected $useAutoIncrement = true;
+
+	/**
 	 * Last insert ID
 	 *
-	 * @var integer
+	 * @var integer|string
 	 */
 	protected $insertID = 0;
 
@@ -213,7 +220,7 @@ class Model
 	/**
 	 * Query Builder object
 	 *
-	 * @var BaseBuilder
+	 * @var BaseBuilder|null
 	 */
 	protected $builder;
 
@@ -222,7 +229,7 @@ class Model
 	 * The array must match the format of data passed to the Validation
 	 * library.
 	 *
-	 * @var array
+	 * @var array|string
 	 */
 	protected $validationRules = [];
 
@@ -253,17 +260,18 @@ class Model
 	/**
 	 * Our validator instance.
 	 *
-	 * @var \CodeIgniter\Validation\Validation
+	 * @var ValidationInterface
 	 */
 	protected $validation;
 
 	/*
 	 * Callbacks. Each array should contain the method
 	 * names (within the model) that should be called
-	 * when those events are triggered. With the exception
-	 * of 'afterFind', all methods are passed the same
-	 * items that are given to the update/insert method.
-	 * 'afterFind' will also include the results that were found.
+	 * when those events are triggered. "Update" and "delete"
+	 * methods are passed the same items that are given to
+	 * their respecitve method.
+	 * "Find" methods receive the ID searched for (if present), and
+	 * 'afterFind' additionally receives the results that were found.
 	 */
 
 	/**
@@ -305,6 +313,12 @@ class Model
 	 * @var array
 	 */
 	protected $afterUpdate = [];
+	/**
+	 * Callbacks for beforeFind
+	 *
+	 * @var array
+	 */
+	protected $beforeFind = [];
 	/**
 	 * Callbacks for afterFind
 	 *
@@ -379,6 +393,22 @@ class Model
 	 */
 	public function find($id = null)
 	{
+		$singleton = is_numeric($id) || is_string($id);
+
+		if ($this->tempAllowCallbacks)
+		{
+			// Call the before event and check for a return
+			$eventData = $this->trigger('beforeFind', [
+				'id'        => $id,
+				'method'    => 'find',
+				'singleton' => $singleton,
+			]);
+
+			if (! empty($eventData['returnData']))
+			{
+				return $eventData['data'];
+			}
+		}
 		$builder = $this->builder();
 
 		if ($this->tempUseSoftDeletes === true)
@@ -392,7 +422,7 @@ class Model
 					->get();
 			$row = $row->getResult($this->tempReturnType);
 		}
-		elseif (is_numeric($id) || is_string($id))
+		elseif ($singleton)
 		{
 			$row = $builder->where($this->table . '.' . $this->primaryKey, $id)
 					->get();
@@ -406,10 +436,20 @@ class Model
 			$row = $row->getResult($this->tempReturnType);
 		}
 
-		$eventData = $this->trigger('afterFind', ['id' => $id, 'data' => $row]);
+		$eventData = [
+			'id'        => $id,
+			'data'      => $row,
+			'method'    => 'find',
+			'singleton' => $singleton,
+		];
+		if ($this->tempAllowCallbacks)
+		{
+			$eventData = $this->trigger('afterFind', $eventData);
+		}
 
 		$this->tempReturnType     = $this->returnType;
 		$this->tempUseSoftDeletes = $this->useSoftDeletes;
+		$this->tempAllowCallbacks = $this->allowCallbacks;
 
 		return $eventData['data'];
 	}
@@ -451,6 +491,21 @@ class Model
 	 */
 	public function findAll(int $limit = 0, int $offset = 0)
 	{
+		if ($this->tempAllowCallbacks)
+		{
+			// Call the before event and check for a return
+			$eventData = $this->trigger('beforeFind', [
+				'method'    => 'findAll',
+				'limit'     => $limit,
+				'offset'    => $offset,
+				'singleton' => false,
+			]);
+			if (! empty($eventData['returnData']))
+			{
+				return $eventData['data'];
+			}
+		}
+
 		$builder = $this->builder();
 
 		if ($this->tempUseSoftDeletes === true)
@@ -463,10 +518,21 @@ class Model
 
 		$row = $row->getResult($this->tempReturnType);
 
-		$eventData = $this->trigger('afterFind', ['data' => $row, 'limit' => $limit, 'offset' => $offset]);
+		$eventData = [
+			'data'      => $row,
+			'limit'     => $limit,
+			'offset'    => $offset,
+			'method'    => 'findAll',
+			'singleton' => false,
+		];
+		if ($this->tempAllowCallbacks)
+		{
+			$eventData = $this->trigger('afterFind', $eventData);
+		}
 
 		$this->tempReturnType     = $this->returnType;
 		$this->tempUseSoftDeletes = $this->useSoftDeletes;
+		$this->tempAllowCallbacks = $this->allowCallbacks;
 
 		return $eventData['data'];
 	}
@@ -481,6 +547,20 @@ class Model
 	 */
 	public function first()
 	{
+		if ($this->tempAllowCallbacks)
+		{
+			// Call the before event and check for a return
+			$eventData = $this->trigger('beforeFind', [
+				'method'    => 'first',
+				'singleton' => true,
+			]);
+
+			if (! empty($eventData['returnData']))
+			{
+				return $eventData['data'];
+			}
+		}
+
 		$builder = $this->builder();
 
 		if ($this->tempUseSoftDeletes === true)
@@ -507,10 +587,19 @@ class Model
 
 		$row = $row->getFirstRow($this->tempReturnType);
 
-		$eventData = $this->trigger('afterFind', ['data' => $row]);
+		$eventData = [
+			'data'      => $row,
+			'method'    => 'first',
+			'singleton' => true,
+		];
+		if ($this->tempAllowCallbacks)
+		{
+			$eventData = $this->trigger('afterFind', $eventData);
+		}
 
 		$this->tempReturnType     = $this->returnType;
 		$this->tempUseSoftDeletes = $this->useSoftDeletes;
+		$this->tempAllowCallbacks = $this->allowCallbacks;
 
 		return $eventData['data'];
 	}
@@ -561,11 +650,32 @@ class Model
 			return true;
 		}
 
-		if (is_object($data) && isset($data->{$this->primaryKey}))
+		// When useAutoIncrement feature is disabled check
+		// in the database if given record already exists
+		if (! $makeUpdate = $this->useAutoIncrement)
+		{
+			$count = 0;
+
+			if (is_object($data) && isset($data->{$this->primaryKey}))
+			{
+				$count = $this->where($this->primaryKey, $data->{$this->primaryKey})->countAllResults();
+			}
+			elseif (is_array($data) && ! empty($data[$this->primaryKey]))
+			{
+				$count = $this->where($this->primaryKey, $data[$this->primaryKey])->countAllResults();
+			}
+
+			if ($count === 1)
+			{
+				$makeUpdate = true;
+			}
+		}
+
+		if ($makeUpdate && is_object($data) && isset($data->{$this->primaryKey}))
 		{
 			$response = $this->update($data->{$this->primaryKey}, $data);
 		}
-		elseif (is_array($data) && ! empty($data[$this->primaryKey]))
+		elseif ($makeUpdate && is_array($data) && ! empty($data[$this->primaryKey]))
 		{
 			$response = $this->update($data[$this->primaryKey], $data);
 		}
@@ -605,7 +715,7 @@ class Model
 			$properties = $data->toRawArray($onlyChanged);
 
 			// Always grab the primary key otherwise updates will fail.
-			if (! empty($properties) && ! empty($primaryKey) && ! in_array($primaryKey, $properties) && ! empty($data->{$primaryKey}))
+			if (! empty($properties) && ! empty($primaryKey) && ! in_array($primaryKey, $properties, true) && ! empty($data->{$primaryKey}))
 			{
 				$properties[$primaryKey] = $data->{$primaryKey};
 			}
@@ -663,11 +773,11 @@ class Model
 	/**
 	 * Returns last insert ID or 0.
 	 *
-	 * @return integer
+	 * @return integer|string
 	 */
-	public function getInsertID(): int
+	public function getInsertID()
 	{
-		return $this->insertID;
+		return is_numeric($this->insertID) ? (int) $this->insertID : $this->insertID;
 	}
 
 	//--------------------------------------------------------------------
@@ -747,7 +857,18 @@ class Model
 			$data[$this->updatedField] = $date;
 		}
 
-		$eventData = $this->trigger('beforeInsert', ['data' => $data]);
+		$eventData = ['data' => $data];
+		if ($this->tempAllowCallbacks)
+		{
+			$eventData = $this->trigger('beforeInsert', $eventData);
+		}
+
+		// Require non empty primaryKey when
+		// not using auto-increment feature
+		if (! $this->useAutoIncrement && empty($eventData['data'][$this->primaryKey]))
+		{
+			throw DataException::forEmptyPrimaryKey('insert');
+		}
 
 		// Must use the set() method to ensure objects get converted to arrays
 		$result = $this->builder()
@@ -757,11 +878,27 @@ class Model
 		// If insertion succeeded then save the insert ID
 		if ($result->resultID)
 		{
-			$this->insertID = $this->db->insertID();
+			if (! $this->useAutoIncrement)
+			{
+				$this->insertID = $eventData['data'][$this->primaryKey];
+			}
+			else
+			{
+				$this->insertID = $this->db->insertID(); // @phpstan-ignore-line
+			}
 		}
 
-		// Trigger afterInsert events with the inserted data and new ID
-		$this->trigger('afterInsert', ['id' => $this->insertID, 'data' => $eventData['data'], 'result' => $result]);
+		$eventData = [
+			'id'     => $this->insertID,
+			'data'   => $eventData['data'],
+			'result' => $result,
+		];
+		if ($this->tempAllowCallbacks)
+		{
+			// Trigger afterInsert events with the inserted data and new ID
+			$this->trigger('afterInsert', $eventData);
+		}
+		$this->tempAllowCallbacks = $this->allowCallbacks;
 
 		// If insertion failed, get out of here
 		if (! $result)
@@ -787,13 +924,54 @@ class Model
 	 */
 	public function insertBatch(array $set = null, bool $escape = null, int $batchSize = 100, bool $testing = false)
 	{
-		if (is_array($set) && $this->skipValidation === false)
+		if (is_array($set))
 		{
-			foreach ($set as $row)
+			foreach ($set as &$row)
 			{
-				if ($this->cleanRules()->validate($row) === false)
+				// If $data is using a custom class with public or protected
+				// properties representing the table elements, we need to grab
+				// them as an array.
+				if (is_object($row) && ! $row instanceof stdClass)
+				{
+					$row = static::classToArray($row, $this->primaryKey, $this->dateFormat, false);
+				}
+
+				// If it's still a stdClass, go ahead and convert to
+				// an array so doProtectFields and other model methods
+				// don't have to do special checks.
+				if (is_object($row))
+				{
+					$row = (array) $row;
+				}
+
+				// Validate every row..
+				if ($this->skipValidation === false && $this->cleanRules()->validate($row) === false)
 				{
 					return false;
+				}
+
+				// Must be called first so we don't
+				// strip out created_at values.
+				$row = $this->doProtectFields($row);
+
+				// Require non empty primaryKey when
+				// not using auto-increment feature
+				if (! $this->useAutoIncrement && empty($row[$this->primaryKey]))
+				{
+					throw DataException::forEmptyPrimaryKey('insertBatch');
+				}
+
+				// Set created_at and updated_at with same time
+				$date = $this->setDate();
+
+				if ($this->useTimestamps && ! empty($this->createdField) && ! array_key_exists($this->createdField, $row))
+				{
+					$row[$this->createdField] = $date;
+				}
+
+				if ($this->useTimestamps && ! empty($this->updatedField) && ! array_key_exists($this->updatedField, $row))
+				{
+					$row[$this->updatedField] = $date;
 				}
 			}
 		}
@@ -874,7 +1052,14 @@ class Model
 			$data[$this->updatedField] = $this->setDate();
 		}
 
-		$eventData = $this->trigger('beforeUpdate', ['id' => $id, 'data' => $data]);
+		$eventData = [
+			'id'   => $id,
+			'data' => $data,
+		];
+		if ($this->tempAllowCallbacks)
+		{
+			$eventData = $this->trigger('beforeUpdate', $eventData);
+		}
 
 		$builder = $this->builder();
 
@@ -888,7 +1073,16 @@ class Model
 				->set($eventData['data'], '', $escape)
 				->update();
 
-		$this->trigger('afterUpdate', ['id' => $id, 'data' => $eventData['data'], 'result' => $result]);
+		$eventData = [
+			'id'     => $id,
+			'data'   => $eventData['data'],
+			'result' => $result,
+		];
+		if ($this->tempAllowCallbacks)
+		{
+			$this->trigger('afterUpdate', $eventData);
+		}
+		$this->tempAllowCallbacks = $this->allowCallbacks;
 
 		return $result;
 	}
@@ -910,13 +1104,48 @@ class Model
 	 */
 	public function updateBatch(array $set = null, string $index = null, int $batchSize = 100, bool $returnSQL = false)
 	{
-		if (is_array($set) && $this->skipValidation === false)
+		if (is_array($set))
 		{
-			foreach ($set as $row)
+			foreach ($set as &$row)
 			{
-				if ($this->cleanRules(true)->validate($row) === false)
+				// If $data is using a custom class with public or protected
+				// properties representing the table elements, we need to grab
+				// them as an array.
+				if (is_object($row) && ! $row instanceof stdClass)
+				{
+					$row = static::classToArray($row, $this->primaryKey, $this->dateFormat);
+				}
+
+				// If it's still a stdClass, go ahead and convert to
+				// an array so doProtectFields and other model methods
+				// don't have to do special checks.
+				if (is_object($row))
+				{
+					$row = (array) $row;
+				}
+
+				// Validate data before saving.
+				if ($this->skipValidation === false && $this->cleanRules(true)->validate($row) === false)
 				{
 					return false;
+				}
+
+				// Save updateIndex for later
+				$updateIndex = $row[$index] ?? null;
+
+				// Must be called first so we don't
+				// strip out updated_at values.
+				$row = $this->doProtectFields($row);
+
+				// Restore updateIndex value in case it was wiped out
+				if ($updateIndex !== null)
+				{
+					$row[$index] = $updateIndex;
+				}
+
+				if ($this->useTimestamps && ! empty($this->updatedField) && ! array_key_exists($this->updatedField, $row))
+				{
+					$row[$this->updatedField] = $this->setDate();
 				}
 			}
 		}
@@ -949,7 +1178,14 @@ class Model
 			$builder = $builder->whereIn($this->primaryKey, $id);
 		}
 
-		$this->trigger('beforeDelete', ['id' => $id, 'purge' => $purge]);
+		$eventData = [
+			'id'    => $id,
+			'purge' => $purge,
+		];
+		if ($this->tempAllowCallbacks)
+		{
+			$this->trigger('beforeDelete', $eventData);
+		}
 
 		if ($this->useSoftDeletes && ! $purge)
 		{
@@ -977,7 +1213,17 @@ class Model
 			$result = $builder->delete();
 		}
 
-		$this->trigger('afterDelete', ['id' => $id, 'purge' => $purge, 'result' => $result, 'data' => null]);
+		$eventData = [
+			'id'     => $id,
+			'purge'  => $purge,
+			'result' => $result,
+			'data'   => null,
+		];
+		if ($this->tempAllowCallbacks)
+		{
+			$this->trigger('afterDelete', $eventData);
+		}
+		$this->tempAllowCallbacks = $this->allowCallbacks;
 
 		return $result;
 	}
@@ -1060,7 +1306,7 @@ class Model
 			}
 		}
 
-		return $this->builder()->replace($data, $returnSQL);
+		return $this->builder()->testMode($returnSQL)->replace($data);
 	}
 
 	//--------------------------------------------------------------------
@@ -1265,14 +1511,11 @@ class Model
 			throw DataException::forInvalidAllowedFields(get_class($this));
 		}
 
-		if (is_array($data) && count($data))
+		foreach ($data as $key => $val)
 		{
-			foreach ($data as $key => $val)
+			if (! in_array($key, $this->allowedFields, true))
 			{
-				if (! in_array($key, $this->allowedFields))
-				{
-					unset($data[$key]);
-				}
+				unset($data[$key]);
 			}
 		}
 
@@ -1358,6 +1601,20 @@ class Model
 		$error = $this->db->error();
 
 		return $error['message'] ?? null;
+	}
+
+	//--------------------------------------------------------------------
+
+	/**
+	 * It could be used when you have to change default or override current allowed fields.
+	 *
+	 * @param array $allowedFields
+	 *
+	 * @return void
+	 */
+	public function setAllowedFields(array $allowedFields)
+	{
+		$this->allowedFields = $allowedFields;
 	}
 
 	//--------------------------------------------------------------------
@@ -1483,13 +1740,6 @@ class Model
 			$data = (array) $data;
 		}
 
-		// ValidationRules can be either a string, which is the group name,
-		// or an array of rules.
-		if (is_string($rules))
-		{
-			$rules = $this->validation->loadRuleGroup($rules);
-		}
-
 		$rules = $this->cleanValidationRules
 			? $this->cleanValidationRules($rules, $data)
 			: $rules;
@@ -1501,10 +1751,8 @@ class Model
 			return true;
 		}
 
-		$this->validation->setRules($rules, $this->validationMessages);
-		$valid = $this->validation->run($data, null, $this->DBGroup);
-
-		return (bool) $valid;
+		return $this->validation->setRules($rules, $this->validationMessages)
+								->run($data, null, $this->DBGroup);
 	}
 
 	//--------------------------------------------------------------------
@@ -1675,7 +1923,7 @@ class Model
 
 	/**
 	 * Sets $tempAllowCallbacks value so that we can temporarily override
-	 * the setting. Resets after the next trigger.
+	 * the setting. Resets after the next method that uses triggers.
 	 *
 	 * @param boolean $val
 	 *
@@ -1711,14 +1959,6 @@ class Model
 	 */
 	protected function trigger(string $event, array $eventData)
 	{
-		$allowed                  = $this->tempAllowCallbacks;
-		$this->tempAllowCallbacks = $this->allowCallbacks;
-
-		if (! $allowed)
-		{
-			return $eventData;
-		}
-
 		// Ensure it's a valid event
 		if (! isset($this->{$event}) || empty($this->{$event}))
 		{
@@ -1757,11 +1997,13 @@ class Model
 		{
 			return $this->{$name};
 		}
-		elseif (isset($this->db->$name))
+
+		if (isset($this->db->$name))
 		{
 			return $this->db->$name;
 		}
-		elseif (isset($this->builder()->$name))
+
+		if (isset($this->builder()->$name))
 		{
 			return $this->builder()->$name;
 		}
@@ -1782,11 +2024,13 @@ class Model
 		{
 			return true;
 		}
-		elseif (isset($this->db->$name))
+
+		if (isset($this->db->$name))
 		{
 			return true;
 		}
-		elseif (isset($this->builder()->$name))
+
+		if (isset($this->builder()->$name))
 		{
 			return true;
 		}

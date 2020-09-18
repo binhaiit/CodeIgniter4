@@ -94,14 +94,14 @@ abstract class BaseHandler implements ImageHandlerInterface
 	/**
 	 * X-axis.
 	 *
-	 * @var integer
+	 * @var integer|null
 	 */
 	protected $xAxis = 0;
 
 	/**
 	 * Y-axis.
 	 *
-	 * @var integer
+	 * @var integer|null
 	 */
 	protected $yAxis = 0;
 
@@ -135,7 +135,7 @@ abstract class BaseHandler implements ImageHandlerInterface
 	/**
 	 * Temporary image used by the different engines.
 	 *
-	 * @var resource
+	 * @var resource|null
 	 */
 	protected $resource;
 
@@ -338,7 +338,7 @@ abstract class BaseHandler implements ImageHandlerInterface
 	 * Changes the stored image type to indicate the new file format to use when saving.
 	 * Does not touch the actual resource.
 	 *
-	 * @param integer|null $imageType A PHP imageType constant, e.g. https://www.php.net/manual/en/function.image-type-to-mime-type.php
+	 * @param integer $imageType A PHP imageType constant, e.g. https://www.php.net/manual/en/function.image-type-to-mime-type.php
 	 *
 	 * @return $this
 	 */
@@ -361,12 +361,12 @@ abstract class BaseHandler implements ImageHandlerInterface
 	{
 		// Allowed rotation values
 		$degs = [
-			90,
-			180,
-			270,
+			90.0,
+			180.0,
+			270.0,
 		];
 
-		if ($angle === '' || ! in_array($angle, $degs))
+		if (! in_array($angle, $degs, true))
 		{
 			throw ImageException::forMissingAngle();
 		}
@@ -511,6 +511,44 @@ abstract class BaseHandler implements ImageHandlerInterface
 	//--------------------------------------------------------------------
 
 	/**
+	 * Handles the actual resizing of the image.
+	 *
+	 * @param boolean $maintainRatio
+	 *
+	 * @return $this
+	 */
+	public abstract function _resize(bool $maintainRatio = false);
+
+	//--------------------------------------------------------------------
+
+	/**
+	 * Crops the image.
+	 *
+	 * @return $this
+	 */
+	public abstract function _crop();
+
+	//--------------------------------------------------------------------
+
+	/**
+	 * Return image width.
+	 *
+	 * @return integer
+	 */
+	public abstract function _getWidth();
+
+	//--------------------------------------------------------------------
+
+	/**
+	 * Return the height of an image.
+	 *
+	 * @return integer
+	 */
+	public abstract function _getHeight();
+
+	//--------------------------------------------------------------------
+
+	/**
 	 * Reads the EXIF information from the image and modifies the orientation
 	 * so that displays correctly in the browser. This is especially an issue
 	 * with images taken by smartphones who always store the image up-right,
@@ -559,6 +597,8 @@ abstract class BaseHandler implements ImageHandlerInterface
 	 * @param string|null $key    If specified, will only return this piece of EXIF data.
 	 * @param boolean     $silent If true, will not throw our own exceptions.
 	 *
+	 * @throws \CodeIgniter\Images\Exceptions\ImageException
+	 *
 	 * @return mixed
 	 */
 	public function getEXIF(string $key = null, bool $silent = false)
@@ -569,6 +609,8 @@ abstract class BaseHandler implements ImageHandlerInterface
 			{
 				return null;
 			}
+
+			throw ImageException::forEXIFUnsupported(); // @codeCoverageIgnore
 		}
 
 		$exif = null; // default
@@ -576,7 +618,7 @@ abstract class BaseHandler implements ImageHandlerInterface
 		{
 			case IMAGETYPE_JPEG:
 			case IMAGETYPE_TIFF_II:
-				$exif = exif_read_data($this->image()->getPathname());
+				$exif = @exif_read_data($this->image()->getPathname());
 				if (! is_null($key) && is_array($exif))
 				{
 					$exif = $exif[$key] ?? false;
@@ -606,7 +648,7 @@ abstract class BaseHandler implements ImageHandlerInterface
 	 * @param integer $height
 	 * @param string  $position
 	 *
-	 * @return $this
+	 * @return BaseHandler
 	 */
 	public function fit(int $width, int $height = null, string $position = 'center')
 	{

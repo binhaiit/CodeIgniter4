@@ -286,7 +286,7 @@ class Language
 	 * @param string  $locale
 	 * @param boolean $return
 	 *
-	 * @return array|null
+	 * @return void|array
 	 */
 	protected function load(string $file, string $locale, bool $return = false)
 	{
@@ -295,7 +295,7 @@ class Language
 			$this->loadedFiles[$locale] = [];
 		}
 
-		if (in_array($file, $this->loadedFiles[$locale]))
+		if (in_array($file, $this->loadedFiles[$locale], true))
 		{
 			// Don't load it more than once.
 			return [];

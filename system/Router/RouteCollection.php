@@ -42,6 +42,7 @@ namespace CodeIgniter\Router;
 use CodeIgniter\Autoloader\FileLocator;
 use CodeIgniter\HTTP\Request;
 use CodeIgniter\Router\Exceptions\RouterException;
+use Config\Modules;
 use Config\Services;
 
 /**
@@ -185,14 +186,14 @@ class RouteCollection implements RouteCollectionInterface
 	/**
 	 * The name of the current group, if any.
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	protected $group;
 
 	/**
 	 * The current subdomain.
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	protected $currentSubdomain;
 
@@ -200,7 +201,7 @@ class RouteCollection implements RouteCollectionInterface
 	 * Stores copy of current options being
 	 * applied during creation.
 	 *
-	 * @var null
+	 * @var array|null
 	 */
 	protected $currentOptions;
 
@@ -233,7 +234,7 @@ class RouteCollection implements RouteCollectionInterface
 	 * @param \CodeIgniter\Autoloader\FileLocator $locator
 	 * @param \Config\Modules                     $moduleConfig
 	 */
-	public function __construct(FileLocator $locator, $moduleConfig)
+	public function __construct(FileLocator $locator, Modules $moduleConfig)
 	{
 		$this->fileLocator  = $locator;
 		$this->moduleConfig = $moduleConfig;
@@ -529,7 +530,8 @@ class RouteCollection implements RouteCollectionInterface
 		// we might need to do.
 		$this->discoverRoutes();
 
-		$routes = [];
+		$routes     = [];
+		$collection = [];
 
 		if (isset($this->routes[$verb]))
 		{
@@ -726,7 +728,7 @@ class RouteCollection implements RouteCollectionInterface
 	 *     });
 	 *
 	 * @param string $name      The name to group/prefix the routes with.
-	 * @param array  ...$params
+	 * @param mixed  ...$params
 	 *
 	 * @return void
 	 */
@@ -806,8 +808,7 @@ class RouteCollection implements RouteCollectionInterface
 		// In order to allow customization of the route the
 		// resources are sent to, we need to have a new name
 		// to store the values in.
-		$new_name = ucfirst($name);
-
+		$new_name = implode('\\', array_map('ucfirst', explode('/', $name)));
 		// If a new controller is specified, then we replace the
 		// $name value with the name of the new controller.
 		if (isset($options['controller']))
@@ -834,39 +835,39 @@ class RouteCollection implements RouteCollectionInterface
 			$options['except'] = is_array($options['except']) ? $options['except'] : explode(',', $options['except']);
 			foreach ($methods as $i => $method)
 			{
-				if (in_array($method, $options['except']))
+				if (in_array($method, $options['except'], true))
 				{
 					unset($methods[$i]);
 				}
 			}
 		}
 
-		if (in_array('index', $methods))
+		if (in_array('index', $methods, true))
 		{
 			$this->get($name, $new_name . '::index', $options);
 		}
-		if (in_array('new', $methods))
+		if (in_array('new', $methods, true))
 		{
 			$this->get($name . '/new', $new_name . '::new', $options);
 		}
-		if (in_array('edit', $methods))
+		if (in_array('edit', $methods, true))
 		{
 			$this->get($name . '/' . $id . '/edit', $new_name . '::edit/$1', $options);
 		}
-		if (in_array('show', $methods))
+		if (in_array('show', $methods, true))
 		{
 			$this->get($name . '/' . $id, $new_name . '::show/$1', $options);
 		}
-		if (in_array('create', $methods))
+		if (in_array('create', $methods, true))
 		{
 			$this->post($name, $new_name . '::create', $options);
 		}
-		if (in_array('update', $methods))
+		if (in_array('update', $methods, true))
 		{
 			$this->put($name . '/' . $id, $new_name . '::update/$1', $options);
 			$this->patch($name . '/' . $id, $new_name . '::update/$1', $options);
 		}
-		if (in_array('delete', $methods))
+		if (in_array('delete', $methods, true))
 		{
 			$this->delete($name . '/' . $id, $new_name . '::delete/$1', $options);
 		}
@@ -874,11 +875,11 @@ class RouteCollection implements RouteCollectionInterface
 		// Web Safe? delete needs checking before update because of method name
 		if (isset($options['websafe']))
 		{
-			if (in_array('delete', $methods))
+			if (in_array('delete', $methods, true))
 			{
 				$this->post($name . '/' . $id . '/delete', $new_name . '::delete/$1', $options);
 			}
-			if (in_array('update', $methods))
+			if (in_array('update', $methods, true))
 			{
 				$this->post($name . '/' . $id, $new_name . '::update/$1', $options);
 			}
@@ -920,8 +921,7 @@ class RouteCollection implements RouteCollectionInterface
 		// In order to allow customization of the route the
 		// resources are sent to, we need to have a new name
 		// to store the values in.
-		$newName = ucfirst($name);
-
+		$newName = implode('\\', array_map('ucfirst', explode('/', $name)));
 		// If a new controller is specified, then we replace the
 		// $name value with the name of the new controller.
 		if (isset($options['controller']))
@@ -948,50 +948,50 @@ class RouteCollection implements RouteCollectionInterface
 			$options['except'] = is_array($options['except']) ? $options['except'] : explode(',', $options['except']);
 			foreach ($methods as $i => $method)
 			{
-				if (in_array($method, $options['except']))
+				if (in_array($method, $options['except'], true))
 				{
 					unset($methods[$i]);
 				}
 			}
 		}
 
-		if (in_array('index', $methods))
+		if (in_array('index', $methods, true))
 		{
 			$this->get($name, $newName . '::index', $options);
 		}
-		if (in_array('show', $methods))
+		if (in_array('show', $methods, true))
 		{
 			$this->get($name . '/show/' . $id, $newName . '::show/$1', $options);
 		}
-		if (in_array('new', $methods))
+		if (in_array('new', $methods, true))
 		{
 			$this->get($name . '/new', $newName . '::new', $options);
 		}
-		if (in_array('create', $methods))
+		if (in_array('create', $methods, true))
 		{
 			$this->post($name . '/create', $newName . '::create', $options);
 		}
-		if (in_array('edit', $methods))
+		if (in_array('edit', $methods, true))
 		{
 			$this->get($name . '/edit/' . $id, $newName . '::edit/$1', $options);
 		}
-		if (in_array('update', $methods))
+		if (in_array('update', $methods, true))
 		{
 			$this->post($name . '/update/' . $id, $newName . '::update/$1', $options);
 		}
-		if (in_array('remove', $methods))
+		if (in_array('remove', $methods, true))
 		{
 			$this->get($name . '/remove/' . $id, $newName . '::remove/$1', $options);
 		}
-		if (in_array('delete', $methods))
+		if (in_array('delete', $methods, true))
 		{
 			$this->post($name . '/delete/' . $id, $newName . '::delete/$1', $options);
 		}
-		if (in_array('show', $methods))
+		if (in_array('show', $methods, true))
 		{
 			$this->get($name . '/' . $id, $newName . '::show/$1', $options);
 		}
-		if (in_array('create', $methods))
+		if (in_array('create', $methods, true))
 		{
 			$this->post($name, $newName . '::create', $options);
 		}
@@ -1206,7 +1206,7 @@ class RouteCollection implements RouteCollectionInterface
 	 *      reverseRoute('Controller::method', $param1, $param2);
 	 *
 	 * @param string $search
-	 * @param array  ...$params
+	 * @param mixed  ...$params
 	 *
 	 * @return string|false
 	 */
@@ -1344,18 +1344,15 @@ class RouteCollection implements RouteCollectionInterface
 		// the appropriate places.
 		foreach ($matches[0] as $index => $pattern)
 		{
-			// Ensure that the param we're inserting matches
-			// the expected param type.
-			$pos = strpos($from, $pattern);
-
-			if (preg_match('#^' . $pattern . '$#u', $params[$index]))
-			{
-				$from = substr_replace($from, $params[$index], $pos, strlen($pattern));
-			}
-			else
+			if (! preg_match('#^' . $pattern . '$#u', $params[$index]))
 			{
 				throw RouterException::forInvalidParameterType();
 			}
+
+			// Ensure that the param we're inserting matches
+			// the expected param type.
+			$pos  = strpos($from, $pattern);
+			$from = substr_replace($from, $params[$index], $pos, strlen($pattern));
 		}
 
 		return '/' . ltrim($from, '/');
@@ -1387,7 +1384,7 @@ class RouteCollection implements RouteCollectionInterface
 			$from = trim($from, '/');
 		}
 
-		$options = array_merge((array) $this->currentOptions, (array) $options);
+		$options = array_merge($this->currentOptions ?? [], $options ?? []);
 
 		// Hostname limiting?
 		if (! empty($options['hostname']))
@@ -1442,17 +1439,17 @@ class RouteCollection implements RouteCollectionInterface
 		//If is redirect, No processing
 		if (! isset($options['redirect']))
 		{
-			// If no namespace found, add the default namespace
-			if (is_string($to) && (strpos($to, '\\') === false || strpos($to, '\\') > 0))
-			{
-				$namespace = $options['namespace'] ?? $this->defaultNamespace;
-				$to        = trim($namespace, '\\') . '\\' . $to;
-			}
-
-			// Always ensure that we escape our namespace so we're not pointing to
-			// \CodeIgniter\Routes\Controller::method.
 			if (is_string($to))
 			{
+				// If no namespace found, add the default namespace
+				if (strpos($to, '\\') === false || strpos($to, '\\') > 0)
+				{
+					$namespace = $options['namespace'] ?? $this->defaultNamespace;
+					$to        = trim($namespace, '\\') . '\\' . $to;
+				}
+
+				// Always ensure that we escape our namespace so we're not pointing to
+				// \CodeIgniter\Routes\Controller::method.
 				$to = '\\' . ltrim($to, '\\');
 			}
 		}

@@ -390,11 +390,16 @@ class CommonFunctionsTest extends \CodeIgniter\Test\CIUnitTestCase
 			'cookiePrefix'             => '',
 			'cookiePath'               => '/',
 			'cookieSecure'             => false,
+			'cookieSameSite'           => 'Lax',
 		];
 
-		$config = (object) $defaults;
+		$appConfig = new App();
+		foreach ($defaults as $key => $config)
+		{
+			$appConfig->$key = $config;
+		}
 
-		$session = new MockSession(new FileHandler($config, '127.0.0.1'), $config);
+		$session = new MockSession(new FileHandler($appConfig, '127.0.0.1'), $appConfig);
 		$session->setLogger(new TestLogger(new Logger()));
 		\CodeIgniter\Config\BaseService::injectMock('session', $session);
 	}
@@ -455,4 +460,41 @@ class CommonFunctionsTest extends \CodeIgniter\Test\CIUnitTestCase
 		$this->assertEquals('https://example.com', Services::response()->getHeader('Location')->getValue());
 	}
 
+	//--------------------------------------------------------------------
+
+	/**
+	 * @dataProvider dirtyPathsProvider
+	 */
+	public function testCleanPathActuallyCleaningThePaths($input, $expected)
+	{
+		$this->assertEquals($expected, clean_path($input));
+	}
+
+	public function dirtyPathsProvider()
+	{
+		$ds = DIRECTORY_SEPARATOR;
+
+		return [
+			[
+				ROOTPATH . 'spark',
+				'ROOTPATH' . $ds . 'spark',
+			],
+			[
+				APPPATH . 'Config' . $ds . 'App.php',
+				'APPPATH' . $ds . 'Config' . $ds . 'App.php',
+			],
+			[
+				SYSTEMPATH . 'CodeIgniter.php',
+				'SYSTEMPATH' . $ds . 'CodeIgniter.php',
+			],
+			[
+				VENDORPATH . 'autoload.php',
+				'VENDORPATH' . $ds . 'autoload.php',
+			],
+			[
+				FCPATH . 'index.php',
+				'FCPATH' . $ds . 'index.php',
+			],
+		];
+	}
 }

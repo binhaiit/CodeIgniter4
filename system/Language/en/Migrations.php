@@ -34,8 +34,6 @@ return [
    'migHelpSeed'       => "\tRuns the seeder named [name].",
    'migCreate'         => "\tCreates a new migration named [name]",
    'nameMigration'     => 'Name the migration file',
-   'badCreateName'     => 'You must provide a migration file name.',
-   'writeError'        => 'Error trying to create {0} file, check if the directory is writable.',
    'migNumberError'    => 'Migration number must be three digits, and there must not be any gaps in the sequence.',
    'rollBackConfirm'   => 'Are you sure you want to rollback?',
    'refreshConfirm'    => 'Are you sure you want to refresh?',
@@ -47,12 +45,17 @@ return [
    'toVersion'         => 'Migrating to current version...',
    'rollingBack'       => 'Rolling back migrations to batch: ',
    'noneFound'         => 'No migrations were found.',
-   'on'                => 'Migrated On: ',
    'migSeeder'         => 'Seeder name',
    'migMissingSeeder'  => 'You must provide a seeder name.',
+   'nameSeeder'        => 'Name the seeder file',
    'removed'           => 'Rolling back: ',
    'added'             => 'Running: ',
 
-   'version'           => 'Version',
+   // Migrate Status
+   'namespace'         => 'Namespace',
    'filename'          => 'Filename',
+   'version'           => 'Version',
+   'group'             => 'Group',
+   'on'                => 'Migrated On: ',
+   'batch'             => 'Batch',
 ];

@@ -40,13 +40,43 @@
 namespace CodeIgniter\Config;
 
 /**
- * AUTO-LOADER
+ * AUTOLOADER
  *
  * This file defines the namespaces and class maps so the Autoloader
  * can find the files as needed.
  */
 class AutoloadConfig
 {
+	/**
+	 * -------------------------------------------------------------------
+	 * Namespaces
+	 * -------------------------------------------------------------------
+	 * This maps the locations of any namespaces in your application to
+	 * their location on the file system. These are used by the autoloader
+	 * to locate files the first time they have been instantiated.
+	 *
+	 * The '/app' and '/system' directories are already mapped for you.
+	 * you may change the name of the 'App' namespace if you wish,
+	 * but this should be done prior to creating any namespaced classes,
+	 * else you will need to modify all of those classes for this to work.
+	 *
+	 * @var array
+	 */
+	public $psr4 = [];
+
+	/**
+	 * -------------------------------------------------------------------
+	 * Class Map
+	 * -------------------------------------------------------------------
+	 * The class map provides a map of class names and their exact
+	 * location on the drive. Classes loaded in this manner will have
+	 * slightly faster performance because they will not have to be
+	 * searched for within one or more directories as they would if they
+	 * were being autoloaded through a namespace.
+	 *
+	 * @var array
+	 */
+	public $classmap = [];
 
 	/**
 	 * -------------------------------------------------------------------
@@ -63,7 +93,7 @@ class AutoloadConfig
 	 */
 	protected $corePsr4 = [
 		'CodeIgniter' => SYSTEMPATH,
-		'App'         => APPPATH // To ensure filters, etc still found,
+		'App'         => APPPATH, // To ensure filters, etc still found,
 	];
 
 	/**
@@ -87,7 +117,7 @@ class AutoloadConfig
 		'Psr\Log\LoggerTrait'              => SYSTEMPATH . 'ThirdParty/PSR/Log/LoggerTrait.php',
 		'Psr\Log\LogLevel'                 => SYSTEMPATH . 'ThirdParty/PSR/Log/LogLevel.php',
 		'Psr\Log\NullLogger'               => SYSTEMPATH . 'ThirdParty/PSR/Log/NullLogger.php',
-		'Laminas\Escaper\Escaper'          => SYSTEMPATH . 'ThirdParty/Escaper/Escaper.php'
+		'Laminas\Escaper\Escaper'          => SYSTEMPATH . 'ThirdParty/Escaper/Escaper.php',
 	];
 
 	//--------------------------------------------------------------------
@@ -102,12 +132,12 @@ class AutoloadConfig
 	{
 		if (isset($_SERVER['CI_ENVIRONMENT']) && $_SERVER['CI_ENVIRONMENT'] === 'testing')
 		{
-			$this->psr4['Tests\Support'] = SUPPORTPATH;
+			$this->psr4['Tests\Support']                  = SUPPORTPATH;
 			$this->classmap['CodeIgniter\Log\TestLogger'] = SYSTEMPATH . 'Test/TestLogger.php';
 			$this->classmap['CIDatabaseTestCase']         = SYSTEMPATH . 'Test/CIDatabaseTestCase.php';
 		}
 
-		$this->psr4 = array_merge($this->corePsr4, $this->psr4);
-	 	$this->classmap = array_merge($this->coreClassmap, $this->classmap);
+		$this->psr4     = array_merge($this->corePsr4, $this->psr4);
+		$this->classmap = array_merge($this->coreClassmap, $this->classmap);
 	}
 }

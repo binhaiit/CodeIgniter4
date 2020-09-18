@@ -44,7 +44,7 @@ namespace CodeIgniter\Modules;
  *
  * @package CodeIgniter\Modules
  * @author  EllisLab Dev Team
- * @link 	https://codeigniter.com/user_guide/general/modules.html
+ * @link    https://codeigniter.com/user_guide/general/modules.html
  */
 class Modules
 {
@@ -83,6 +83,6 @@ class Modules
 			return false;
 		}
 
-		return in_array(strtolower($alias), $this->aliases);
+		return in_array(strtolower($alias), $this->aliases, true);
 	}
 }

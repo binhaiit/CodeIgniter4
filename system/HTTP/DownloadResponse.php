@@ -58,7 +58,7 @@ class DownloadResponse extends Message implements ResponseInterface
 	/**
 	 * Download for file
 	 *
-	 * @var File
+	 * @var File|null
 	 */
 	private $file;
 
@@ -72,7 +72,7 @@ class DownloadResponse extends Message implements ResponseInterface
 	/**
 	 * Download for binary
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	private $binary;
 
@@ -163,7 +163,8 @@ class DownloadResponse extends Message implements ResponseInterface
 		{
 			return strlen($this->binary);
 		}
-		elseif ($this->file instanceof File)
+
+		if ($this->file instanceof File)
 		{
 			return $this->file->getSize();
 		}
@@ -244,7 +245,7 @@ class DownloadResponse extends Message implements ResponseInterface
 
 		$result = sprintf('attachment; filename="%s"', $download_filename);
 
-		if (isset($utf8_filename))
+		if ($utf8_filename)
 		{
 			$result .= '; filename*=UTF-8\'\'' . rawurlencode($utf8_filename);
 		}
@@ -480,11 +481,11 @@ class DownloadResponse extends Message implements ResponseInterface
 		// http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html
 		if (! isset($this->headers['Date']))
 		{
-			$this->setDate(\DateTime::createFromFormat('U', time()));
+			$this->setDate(\DateTime::createFromFormat('U', (string) time()));
 		}
 
 		// HTTP Status
-		header(sprintf('HTTP/%s %s %s', $this->protocolVersion, $this->getStatusCode(), $this->getReason()), true,
+		header(sprintf('HTTP/%s %s %s', $this->getProtocolVersion(), $this->getStatusCode(), $this->getReason()), true,
 				$this->getStatusCode());
 
 		// Send all of our headers
@@ -509,7 +510,8 @@ class DownloadResponse extends Message implements ResponseInterface
 		{
 			return $this->sendBodyByBinary();
 		}
-		elseif ($this->file !== null)
+
+		if ($this->file !== null)
 		{
 			return $this->sendBodyByFilePath();
 		}

@@ -1,21 +1,33 @@
 <?php
-ini_set('error_reporting', E_ALL);
 
+error_reporting(E_ALL);
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 
 // Make sure it recognizes that we're testing.
 $_SERVER['CI_ENVIRONMENT'] = 'testing';
 define('ENVIRONMENT', 'testing');
+defined('CI_DEBUG') || define('CI_DEBUG', true);
+
+// Often these constants are pre-defined, but query the current directory structure as a fallback
+defined('HOMEPATH') || define('HOMEPATH', realpath(rtrim(getcwd(), '\\/ ')) . DIRECTORY_SEPARATOR);
+$source = is_dir(HOMEPATH . 'app')
+	   ? HOMEPATH
+	   : (is_dir('vendor/codeigniter4/framework/')
+			   ? 'vendor/codeigniter4/framework/'
+			   : 'vendor/codeigniter4/codeigniter4/');
+defined('CONFIGPATH') || define('CONFIGPATH', realpath($source . 'app/Config') . DIRECTORY_SEPARATOR);
+defined('PUBLICPATH') || define('PUBLICPATH', realpath($source . 'public') . DIRECTORY_SEPARATOR);
+unset($source);
 
 // Load framework paths from their config file
 require CONFIGPATH . 'Paths.php';
 $paths = new Config\Paths();
 
 // Define necessary framework path constants
-defined('APPPATH')       || define('APPPATH', realpath($paths->appDirectory) . DIRECTORY_SEPARATOR);
-defined('WRITEPATH')     || define('WRITEPATH', realpath($paths->writableDirectory) . DIRECTORY_SEPARATOR);
-defined('SYSTEMPATH')    || define('SYSTEMPATH', realpath($paths->systemDirectory) . DIRECTORY_SEPARATOR);
+defined('APPPATH')       || define('APPPATH', realpath(rtrim($paths->appDirectory, '\\/ ')) . DIRECTORY_SEPARATOR);
+defined('WRITEPATH')     || define('WRITEPATH', realpath(rtrim($paths->writableDirectory, '\\/ ')) . DIRECTORY_SEPARATOR);
+defined('SYSTEMPATH')    || define('SYSTEMPATH', realpath(rtrim($paths->systemDirectory, '\\/')) . DIRECTORY_SEPARATOR);
 defined('ROOTPATH')      || define('ROOTPATH', realpath(APPPATH . '../') . DIRECTORY_SEPARATOR);
 defined('CIPATH')        || define('CIPATH', realpath(SYSTEMPATH . '../') . DIRECTORY_SEPARATOR);
 defined('FCPATH')        || define('FCPATH', realpath(PUBLICPATH) . DIRECTORY_SEPARATOR);
@@ -57,11 +69,13 @@ if (! class_exists('CodeIgniter\Services', false))
 }
 
 // Launch the autoloader to gather namespaces (includes composer.json's "autoload-dev")
-$loader = \CodeIgniter\Services::autoloader();
+$loader = CodeIgniter\Services::autoloader();
 $loader->initialize(new Config\Autoload(), new Config\Modules());
-
-// Register the loader with the SPL autoloader stack.
-$loader->register();
+$loader->register(); // Register the loader with the SPL autoloader stack.
 
 require_once APPPATH . 'Config/Routes.php';
+
+/**
+ * @var \CodeIgniter\Router\RouteCollection $routes
+ */
 $routes->getRoutes('*');

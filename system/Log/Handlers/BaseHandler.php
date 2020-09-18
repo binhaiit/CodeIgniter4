@@ -77,13 +77,13 @@ abstract class BaseHandler implements HandlerInterface
 	 * Checks whether the Handler will handle logging items of this
 	 * log Level.
 	 *
-	 * @param $level
+	 * @param string $level
 	 *
 	 * @return boolean
 	 */
 	public function canHandle(string $level): bool
 	{
-		return in_array($level, $this->handles);
+		return in_array($level, $this->handles, true);
 	}
 
 	//--------------------------------------------------------------------
@@ -94,8 +94,8 @@ abstract class BaseHandler implements HandlerInterface
 	 * will stop. Any handlers that have not run, yet, will not
 	 * be run.
 	 *
-	 * @param $level
-	 * @param $message
+	 * @param string $level
+	 * @param string $message
 	 *
 	 * @return boolean
 	 */
